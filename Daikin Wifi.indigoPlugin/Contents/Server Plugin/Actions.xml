@@ -9,12 +9,38 @@
 	 backlightBrightness state added to Devices.xml.
 -->
 <Actions>
-	<Action id="powerOn" uiPath="DeviceActions">
+	<Action id="powerOn" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Power on AC Unit</Name>
 		<CallbackMethod>powerOn</CallbackMethod>
 	</Action>
-    <Action id="powerOff" uiPath="DeviceActions">
+    <Action id="powerOff" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Power off AC Unit</Name>
 		<CallbackMethod>powerOff</CallbackMethod>
+	</Action>
+	<Action id="fanOnly" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Set Fan Only Mode</Name>
+		<CallbackMethod>fanOnly</CallbackMethod>
+	</Action>
+	<Action id="deHum" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Set De-Humify Mode</Name>
+		<CallbackMethod>deHum</CallbackMethod>
+	</Action>
+	<Action id="fanSpeed" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Set Fan Speed</Name>
+		<CallbackMethod>fanSpeed</CallbackMethod>
+		<ConfigUI>
+			<Field id="speed" type="menu" defaultValue="A">
+			<Label>Choose:</Label>
+			<List>
+				<Option value="A">Automatic</Option>
+				<Option value="B">Silence</Option>
+				<Option value="3">Level 1</Option>
+				<Option value="4">Level 2</Option>
+				<Option value="5">Level 3</Option>
+				<Option value="6">Level 4</Option>
+				<Option value="7">Level 5</Option>
+			</List>
+			</Field>
+		</ConfigUI>
 	</Action>
 </Actions>

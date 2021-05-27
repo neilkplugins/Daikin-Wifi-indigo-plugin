@@ -91,7 +91,7 @@
 				<Label>Supports thermostat modes:</Label>
 				<Description>Show thermostat mode controls (heat/cool/auto) in UI</Description>
 			</Field>
-			<Field type="checkbox" id="SupportsHvacFanMode" defaultValue="true" hidden="true">
+			<Field type="checkbox" id="SupportsHvacFanMode" defaultValue="false" hidden="true">
 				<Label>Supports fan modes:</Label>
 				<Description>Show fan mode controls (auto/always on) in UI</Description>
 			</Field>

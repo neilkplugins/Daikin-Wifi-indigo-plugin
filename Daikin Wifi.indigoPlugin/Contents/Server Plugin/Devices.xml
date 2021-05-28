@@ -79,11 +79,18 @@
 					<Option value="3">3</Option>
 				</List>
 			</Field>
-			<Field type="checkbox" id="SupportsHeatSetpoint" defaultValue="true">
+			<Field type="checkbox" id="requireHTTPS" defaultValue="false">
+				<Label>Does the unit require "HTTPS" support:</Label>
+				<Description>Configure HTTPS Support</Description>
+			</Field>
+			<Field type="textfield" id="uuid" defaultValue="" visibleBindingId="requireHTTPS" visibleBindingValue="true">
+				<Label>Enter your registered uuid:</Label>
+			</Field>
+			<Field type="checkbox" id="SupportsHeatSetpoint" defaultValue="true" hidden="true">
 				<Label>Supports heat setpoint:</Label>
 				<Description>Show heat setpoint controls in UI</Description>
 			</Field>
-			<Field type="checkbox" id="SupportsCoolSetpoint" defaultValue="true">
+			<Field type="checkbox" id="SupportsCoolSetpoint" defaultValue="true" hidden="true">
 				<Label>Supports cool setpoint:</Label>
 				<Description>Show cool setpoint controls in UI</Description>
 			</Field>
@@ -99,6 +106,7 @@
 				<Label>Supports compressor/furnace feedback:</Label>
 				<Description>Show compressor/furnace states in UI</Description>
 			</Field>
+			<Field type="separator" id="simpleSeparator2" />
 			<Field type="menu" id="measurement" defaultValue="C" >
 				<Label>Show temps in:</Label>
 				<List>

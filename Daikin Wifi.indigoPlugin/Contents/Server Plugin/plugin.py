@@ -43,8 +43,8 @@ class Plugin(indigo.PluginBase):
 	def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
 		indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
 		self.debug = False
-		self.simulateTempChanges = True		# Every few seconds update to random temperature values
-		self.simulateHumidityChanges = True	# Every few seconds update to random humidity values
+		#self.simulateTempChanges = True		# Every few seconds update to random temperature values
+		#self.simulateHumidityChanges = True	# Every few seconds update to random humidity values
 
 	def __del__(self):
 		indigo.PluginBase.__del__(self)
@@ -585,6 +585,24 @@ class Plugin(indigo.PluginBase):
 		except:
 			indigo.server.log(dev.name + ": Unable to set Daikin fan mode, check IP Address")
 
+	def fanDirection(self, pluginAction, dev):
+		new_direction=pluginAction.props.get("direction")
+		try:
+			controller_ip = dev.pluginProps["address"]
+		except:
+			indigo.server.log("No Device specified - add to action config")
+			return
+		if dev.states['unit_power']=="on":
+			pow='1'
+		else:
+			pow='0'
+		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
+		indigo.server.log(control_url)
+		try:
+			f = urllib2.urlopen(control_url)
+		except:
+			indigo.server.log(dev.name + ": Unable to set Daikin fan mode, check IP Address")
+
 	def fanOnly(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]
@@ -637,3 +655,22 @@ class Plugin(indigo.PluginBase):
 	def changeHumiditySensorCountTo3(self):
 		self._changeAllHumiditySensorCounts(3)
 
+#### Device Configuration validation
+
+	def validateDeviceConfigUi(self, valuesDict, dev_type, dev):
+		indigo.server.log(str(valuesDict))
+		indigo.server.log(str(dev))
+		try:
+			control_url = 'http://' + valuesDict['address'] + '/common/basic_info'
+			indigo.server.log(control_url)
+			indigo.server.log(control_url)
+			f = urllib2.urlopen(control_url,timeout=1)
+
+
+		except:
+			indigo.server.log("Unknown error connecting to Daikin Unit at "+valuesDict['address'],isError=True)
+			errorsDict = indigo.Dict()
+			errorsDict['address'] = "Failed to Connection to AC Unit - Check IP Address and if HTPPS required"
+			return (False, valuesDict, errorsDict)
+
+		return (True, valuesDict)

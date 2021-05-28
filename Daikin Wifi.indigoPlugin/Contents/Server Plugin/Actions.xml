@@ -43,4 +43,20 @@
 			</Field>
 		</ConfigUI>
 	</Action>
+		<Action id="fanDirection" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Set Fan Direction</Name>
+		<CallbackMethod>fanDirection</CallbackMethod>
+		<ConfigUI>
+			<Field id="direction" type="menu" defaultValue="0">
+			<Label>Choose:</Label>
+			<List>
+				<Option value="0">No motion</Option>
+				<Option value="1">Vertical Motion</Option>
+				<Option value="2">Horizontal Motion</Option>
+				<Option value="3">Horizontal and Vertical Motion</Option>
+			</List>
+			</Field>
+		</ConfigUI>
+	</Action>
+
 </Actions>

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<PluginConfig>
+    <Field id="showDebugInfo" type="checkbox">
+	<Label>Enable debuging:</Label>
+	<Description>(not recommended)</Description>
+	</Field>
+	<Field id="simpleseparator4" type="separator">
+	</Field>
+	<Field id="midLabel" type="label" fontSize="small" fontColor="darkgray">
+		<Label>Polling frequency to refresh AC Status</Label>
+	</Field>
+	<Field id="pollingFrequency" type="textfield" defaultValue="15">
+	<Label>Enter Polling Frequency in Seconds:</Label>
+	</Field>
+</PluginConfig>

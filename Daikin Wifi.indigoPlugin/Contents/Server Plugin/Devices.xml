@@ -79,7 +79,7 @@
 					<Option value="3">3</Option>
 				</List>
 			</Field>
-			<Field type="checkbox" id="requireHTTPS" defaultValue="false">
+			<Field type="checkbox" id="requireHTTPS" defaultValue="false" hidden="true">
 				<Label>Does the unit require "HTTPS" support:</Label>
 				<Description>Configure HTTPS Support</Description>
 			</Field>
@@ -106,7 +106,6 @@
 				<Label>Supports compressor/furnace feedback:</Label>
 				<Description>Show compressor/furnace states in UI</Description>
 			</Field>
-			<Field type="separator" id="simpleSeparator2" />
 			<Field type="menu" id="measurement" defaultValue="C" >
 				<Label>Show temps in:</Label>
 				<List>
@@ -158,16 +157,30 @@
 				<TriggerLabel>Current operation mode</TriggerLabel>
 				<ControlPageLabel>Current operation mode</ControlPageLabel>
 			</State>
-
+			<State id="setpoint_temp">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Active Set Point Temperature</TriggerLabel>
+				<ControlPageLabel>Active Temperature Setpoint</ControlPageLabel>
+			</State>
 			<State id="outside_temp">
 				<ValueType>Number</ValueType>
 				<TriggerLabel>Outside Temperature</TriggerLabel>
 				<ControlPageLabel>Outside Temperature</ControlPageLabel>
 			</State>
-			<State id="setpoint_temp">
+			<State id="auto_setpoint">
 				<ValueType>Number</ValueType>
-				<TriggerLabel>Set Point Temperature</TriggerLabel>
-				<ControlPageLabel>Temperature Setpoint</ControlPageLabel>
+				<TriggerLabel>Set Point Temperature Stored Auto Mode</TriggerLabel>
+				<ControlPageLabel>Temperature Setpoint Stored Auto Mode</ControlPageLabel>
+			</State>
+			<State id="cool_setpoint">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Set Point Temperature Stored Cool Mode</TriggerLabel>
+				<ControlPageLabel>Temperature Setpoint Stored Cool Mode</ControlPageLabel>
+			</State>
+			<State id="heat_setpoint">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Set Point Temperature Stored Heat Mode</TriggerLabel>
+				<ControlPageLabel>Temperature Setpoint Stored Heat Mode</ControlPageLabel>
 			</State>
 			<State id="setpoint_humidity">
 				<ValueType>Number</ValueType>

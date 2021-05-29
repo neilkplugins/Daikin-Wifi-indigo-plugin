@@ -9,7 +9,7 @@ import indigo
 import os
 import sys
 import random
-import urllib2
+import requests
 import simplejson
 
 # Note the "indigo" module is automatically imported and made available inside
@@ -42,31 +42,18 @@ class Plugin(indigo.PluginBase):
 	########################################
 	def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
 		indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
-		self.debug = False
-		#self.simulateTempChanges = True		# Every few seconds update to random temperature values
-		#self.simulateHumidityChanges = True	# Every few seconds update to random humidity values
+		self.debug = pluginPrefs.get("showDebugInfo", False)
 
 	def __del__(self):
 		indigo.PluginBase.__del__(self)
 	
-	#
-	# Set state and state.ui
-	#
-	def setState (self, dev, statename, value):
-		if dev.pluginProps["measurement"] == "C":
-			# Default operation by this UK manufacturer
-			stateSuffix = u" °C" 
-			dev.updateStateOnServer(key=statename, value=value, decimalPlaces=1, uiValue=str(value) + stateSuffix)
-		
-		if dev.pluginProps["measurement"] == "F":
-			# Convert
-			value = float(value)
-			value = (value * 1.8000) + 32
-			value = round(value, 1)
-			
-			stateSuffix = u" °F" 
-			dev.updateStateOnServer(key=statename, value=value, decimalPlaces=1, uiValue=str(value) + stateSuffix)
-		
+	def baseURL(self, dev):
+		if dev.pluginProps["requireHTTPS"]:
+			prefix = "https://"
+		else:
+			prefix = "http://"
+		return prefix+dev.pluginProps['address']
+
 
 	########################################
 	# Internal utility methods. Some of these are useful to provide
@@ -114,36 +101,79 @@ class Plugin(indigo.PluginBase):
 		#dev.updateStateOnServer(stateKey, value, uiValue="%d °F" % (value))
 		#self.debugLog(u"\"%s\" called update %s %d" % (dev.name, stateKey, value))
 		X = 1
-		
+	def makeAPIrequest(self, dev, api):
+		controller_ip = dev.pluginProps["address"]
+		if dev.pluginProps["requireHTTPS"]:
+			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
+			#response = requests.get(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
+		else:
+			headers={}
+			#response = requests.get(self.baseURL(dev) + api, timeout=1)
+		try:
+			response = requests.get(self.baseURL(dev) + api, headers=headers, timeout=1)
+			response.raise_for_status()
+		except requests.exceptions.HTTPError as err:
+		 	indigo.server.log("HTTP Error getting "+api+" from Daikin Unit "+dev.name)
+		 	self.debugLog("Error is " + str(err))
+			return "FAILED"
+
+		except Exception as err:
+		 	indigo.server.log("Unknown/Other Error getting "+api+" from Daikin Unit "+dev.name)
+		 	self.debugLog("Error is " + str(err))
+			return "FAILED"
+		return response.text
 	#
+	def sendAPIrequest(self, dev, api):
+		controller_ip = dev.pluginProps["address"]
+		if dev.pluginProps["requireHTTPS"]:
+			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
+			#response = requests.post(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
+		else:
+			headers={}
+			#response = requests.post(self.baseURL(dev) + api, timeout=1)
+		self.debugLog(self.baseURL(dev) + api)
+		try:
+			response = requests.post(self.baseURL(dev) + api, headers=headers, timeout=1)
+			response.raise_for_status()
+		except requests.exceptions.HTTPError as err:
+		 	indigo.server.log("HTTP Error posting "+api+" from Daikin Unit "+dev.name, isError=True)
+		 	self.debugLog("Error is " + str(err))
+			return False
+
+		except Exception as err:
+		 	indigo.server.log("Unknown/Other Error setting "+api+" from Daikin Unit "+dev.name, isError=True)
+		 	self.debugLog("Error is " + str(err))
+			return False
+		self.debugLog(response.text)
+		if response.text=="ret=PARAM NG":
+			indigo.server.log("Request to update was processed but not sucessful " + api + " from Daikin Unit " + dev.name, isError=True)
+			return False
+
+		return True
+#
+
+
 	# Daikin request
 	#
 	def requestData (self, dev, command):
-
-
-		controller_ip = dev.pluginProps["address"]
-
-		try:
-			f = urllib2.urlopen('http://'+controller_ip+'/aircon/get_control_info')
-		except:
-			indigo.server.log(dev.name + ": Unable to retrieve Daikin control data, check IP Address")
-			return False
-		
-		control_data = f.read()
-		split_control = control_data.split(',')
+		# get control response data
+		control_response=self.makeAPIrequest(dev,'/aircon/get_control_info')
+		if control_response=="FAILED":
+			indigo.server.log("Failed to update "+dev.name+" aborting state refresh")
+			return
+		split_control = control_response.split(',')
 		returned_list = []
 		for element in split_control:
 			returned_list.append(element.split('='))
-		try:
-			f = urllib2.urlopen('http://'+controller_ip+'/aircon/get_sensor_info')
-		except:
-			indigo.server.log(dev.name + ": Unable to retrieve Daikin sensor data, check IP Address")
-			return False
-		sensor_data = f.read()
-		split_sensor = sensor_data.split(',')
+		#get sensor response data
+		sensor_response = self.makeAPIrequest(dev, '/aircon/get_sensor_info')
+		if control_response=="FAILED":
+			indigo.server.log("Failed to update "+dev.name+" aborting state refresh")
+			return
+		split_sensor = sensor_response.split(',')
 		for element in split_sensor:
 			returned_list.append(element.split('='))
-		indigo.server.log(str(returned_list))
+		self.debugLog(str(returned_list))
 		returned_dict = {}
 		for element in returned_list:
 			returned_dict[element[0]] = element[1]
@@ -157,16 +187,26 @@ class Plugin(indigo.PluginBase):
 	def _refreshStatesFromHardware(self, dev, logRefresh, commJustStarted):
 		ac_data = self.requestData (dev, "getCurrentState")
 
-		try:
-		 	if ac_data == False: return
-		except:
-			ac_data = ac_data
+		if type(ac_data) != dict:
+			self.debugLog("Empty data aborting state updates")
+			return
+
+		if dev.pluginProps["measurement"] == "C":
+			stateSuffix = u" °C"
+		else:
+			stateSuffix = u" °F"
+
+
 
 		state_updates = []
 		# Update the states necessary to make mode change (some duplication with the native device but potentially useful to have visible)
 
 		state_updates.append({'key': "mode", 'value': ac_data['mode']})
-		state_updates.append({'key': "setpoint_temp", 'value': ac_data['stemp']})
+		state_updates.append({'key': "setpoint_temp", 'value': ac_data['stemp'], 'uiValue' : ac_data['stemp'] + stateSuffix})
+		state_updates.append({'key': "cool_setpoint", 'value': ac_data['dt3'], 'uiValue' : ac_data['dt3'] + stateSuffix})
+		state_updates.append({'key': "heat_setpoint", 'value': ac_data['dt4'], 'uiValue' : ac_data['dt4'] + stateSuffix})
+		state_updates.append({'key': "auto_setpoint", 'value': ac_data['dt1'], 'uiValue' : ac_data['dt3'] + stateSuffix})
+
 		state_updates.append({'key': "setpoint_humidity", 'value': ac_data['shum']})
 
 		ui_fan_rate=ac_data['f_rate']
@@ -174,18 +214,10 @@ class Plugin(indigo.PluginBase):
 			ui_fan_rate='Auto'
 		elif ac_data['f_rate']=='B':
 			ui_fan_rate='Silence'
-		indigo.server.log(ui_fan_rate)
 
 		state_updates.append({'key': "fan_rate", 'value': ac_data['f_rate'], 'uiValue' : ui_fan_rate})
 		state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir']})
-		state_updates.append({'key': "outside_temp", 'value': ac_data['otemp']})
-
-
-
-
-
-		indigo.server.log("Mode is "+ac_data['mode'])
-
+		state_updates.append({'key': "outside_temp", 'value': ac_data['otemp'], 'uiValue' :  ac_data['otemp']+ stateSuffix})
 
 		if ac_data['mode']=='2':
 			#2 IS De Humidify
@@ -224,26 +256,17 @@ class Plugin(indigo.PluginBase):
 			state_updates.append({'key': "hvacHeaterIsOn", 'value': False})
 			state_updates.append({'key': "hvacCoolerIsOn", 'value': False})
 
-
-		# housetemp = data['insideTemp']
-		# temp = "%.1f" % housetemp
 		#
-		# settemp = data['setPointTemp']
-		# set = "%.1f" % settemp
-		#
-		state_updates.append({'key': "temperatureInput1", 'value': ac_data['htemp']})
+		state_updates.append({'key': 'temperatureInput1', 'value': float(ac_data['htemp']), 'uiValue': ac_data['htemp']+ stateSuffix})
 
 		#
 		if (ac_data['stemp'] == '--' or ac_data['stemp'] == 'M'):
-			indigo.server.log("No setpoint in fan or dry mode")
+			self.debugLog("No setpoint in fan or dry mode")
 		else:
-			state_updates.append({'key': "setpointHeat", 'value': ac_data['stemp']})
-			state_updates.append({'key': "setpointCool", 'value': ac_data['stemp']})
-			indigo.server.log("setting stemp")
-
+			state_updates.append({'key': "setpointHeat", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+			state_updates.append({'key': "setpointCool", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
 
 		dev.updateStatesOnServer(state_updates)
-		indigo.server.log("fan rate is "+str(dev.states['fan_rate']))
 
 
 # dev.updateStateOnServer("operationMode", data['operation'])
@@ -305,34 +328,32 @@ class Plugin(indigo.PluginBase):
 		# take a copy of the current states for overall power and mode
 		pow = dev.states['unit_power']
 		mode = dev.states['mode']
-
-		sendSuccess = True
+		setpoint=str(dev.states['setpoint_temp'])
+		self.debugLog("action string is "+actionStr)
 		if 'heat' in actionStr:
 			#implement set mode function
 			mode=4
 			pow=1
+			setpoint=str(dev.states['heat_setpoint'])
 		if 'cool' in actionStr:
 			#implement set mode function
 			mode=3
 			pow=1
+			setpoint=str(dev.states['cool_setpoint'])
+
 		if 'auto' in actionStr:
 			#implement set mode function
 			mode=0
 			pow=1
+			setpoint=str(dev.states['auto_setpoint'])
+
 		if 'off' in actionStr:
 			#implement set mode function
 			pow=0
 
-		controller_ip = dev.pluginProps["address"]
-		control_url='http://'+controller_ip+'/aircon/set_control_info?pow='+str(pow)+'&mode='+str(mode)+'&stemp='+str(dev.states['setpoint_temp'])+'&shum='+str(dev.states['setpoint_humidity'])+'&f_rate='+str(dev.states['fan_rate'])+'&f_dir='+str(dev.states['fan_direction'])
-		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
-			indigo.server.log(dev.name + ": Unable to set Daikin control data, check IP Address")
-			sendSuccess=False
+		api_url='/aircon/set_control_info?pow='+str(pow)+'&mode='+str(mode)+'&stemp='+setpoint+'&shum=0&f_rate='+str(dev.states['fan_rate'])+'&f_dir='+str(dev.states['fan_direction'])
+		if self.sendAPIrequest(dev,api_url):
 
-		if sendSuccess:
 			# If success then log that the command was successfully sent.
 			indigo.server.log(u"sent \"%s\" mode change to %s" % (dev.name, actionStr))
 
@@ -343,59 +364,51 @@ class Plugin(indigo.PluginBase):
 			# Else log failure but do NOT update state on Indigo Server.
 			indigo.server.log(u"send \"%s\" mode change to %s failed" % (dev.name, actionStr), isError=True)
 
-	######################
-	# Process action request from Indigo Server to change thermostat's fan mode.
-	def _handleChangeFanModeAction(self, dev, newFanMode):
-		# Command hardware module (dev) to change the fan mode here:
-		# ** IMPLEMENT ME **
-		sendSuccess = True		# Set to False if it failed.
-
-		actionStr = _lookupActionStrFromFanMode(newFanMode)
-		if sendSuccess:
-			# If success then log that the command was successfully sent.
-			indigo.server.log(u"sent \"%s\" fan mode change to %s" % (dev.name, actionStr))
-
-			# And then tell the Indigo Server to update the state.
-			if "hvacFanMode" in dev.states:
-				dev.updateStateOnServer("hvacFanMode", newFanMode)
-		else:
-			# Else log failure but do NOT update state on Indigo Server.
-			indigo.server.log(u"send \"%s\" fan mode change to %s failed" % (dev.name, actionStr), isError=True)
+	# ######################
+	# # Process action request from Indigo Server to change thermostat's fan mode.
+	# def _handleChangeFanModeAction(self, dev, newFanMode):
+	# 	# Command hardware module (dev) to change the fan mode here:
+	# 	# ** IMPLEMENT ME **
+	# 	sendSuccess = True		# Set to False if it failed.
+	#
+	# 	actionStr = _lookupActionStrFromFanMode(newFanMode)
+	# 	if sendSuccess:
+	# 		# If success then log that the command was successfully sent.
+	# 		indigo.server.log(u"sent \"%s\" fan mode change to %s" % (dev.name, actionStr))
+	#
+	# 		# And then tell the Indigo Server to update the state.
+	# 		if "hvacFanMode" in dev.states:
+	# 			dev.updateStateOnServer("hvacFanMode", newFanMode)
+	# 	else:
+	# 		# Else log failure but do NOT update state on Indigo Server.
+	# 		indigo.server.log(u"send \"%s\" fan mode change to %s failed" % (dev.name, actionStr), isError=True)
 
 	######################
 	# Process action request from Indigo Server to change a cool/heat setpoint.
 	def _handleChangeSetpointAction(self, dev, newSetpoint, logActionName, stateKey):
 
+		if dev.pluginProps["measurement"] == "C":
+			if newSetpoint < 10.0:
+				newSetpoint = 10.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
+			elif newSetpoint > 30.0:
+				newSetpoint = 30.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
+		else:
+			if newSetpoint < 50.0:
+				newSetpoint = 50.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
+			elif newSetpoint > 86.0:
+				newSetpoint = 86.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
 
-		if newSetpoint < 10.0:
-			newSetpoint = 10.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
-		elif newSetpoint > 30.0:
-			newSetpoint = 30.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
-
-		sendSuccess = False
-
-		# if stateKey == u"setpointCool":
-		# 	# Command hardware module (dev) to change the cool setpoint to newSetpoint here:
-		# 	# ** IMPLEMENT ME **
-		# 	sendSuccess = True			# Set to False if it failed.
-		# elif stateKey == u"setpointHeat":
-		# 	# Command hardware module (dev) to change the heat setpoint to newSetpoint here:
-		# 	# ** IMPLEMENT ME **
-		# 	sendSuccess = True			# Set to False if it failed.
 		sendSuccess=True
 		if dev.states['unit_power']=="on":
 			pow='1'
 		else:
 			pow='0'
-		controller_ip = dev.pluginProps["address"]
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow=' + pow + '&mode=' + str(dev.states['mode']) + '&stemp=' + str(newSetpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + str(dev.states['mode']) + '&stemp=' + str(newSetpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
-			indigo.server.log(dev.name + ": Unable to set Daikin setpoint data, check IP Address")
+		if self.sendAPIrequest(dev, control_url):
+			sendSuccess = True
+		else:
 			sendSuccess = False
-
 
 		if sendSuccess:
 			# If success then log that the command was successfully sent.
@@ -417,20 +430,22 @@ class Plugin(indigo.PluginBase):
 
 	########################################
 	def runConcurrentThread(self):
+		self.debugLog("Starting concurrent thread")
+		try:
+			pollingFreq = int(self.pluginPrefs['pollingFrequency'])
+		except:
+			pollingFreq = 15
+
 		try:
 			while True:
 				for dev in indigo.devices.iter("self"):
 					if not dev.enabled or not dev.configured:
 						continue
 
-					# Plugins that need to poll out the status from the thermostat
-					# could do so here, then broadcast back the new values to the
-					# Indigo Server.
 					self._refreshStatesFromHardware(dev, False, False)
-					#X = 1 # placeholder
-					
 
-				self.sleep(15)
+
+				self.sleep(pollingFreq)
 		except self.StopThread:
 			pass	# Optionally catch the StopThread exception and do any needed cleanup.
 
@@ -546,12 +561,11 @@ class Plugin(indigo.PluginBase):
 		except:
 			indigo.server.log("No Device specified - add to action config")
 			return
-		controller_ip = dev.pluginProps["address"]
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow=0&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow=0&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": switched off")
+		else:
 			indigo.server.log(dev.name + ": Unable to switch Daikin unit off, check IP Address")
 
 	def powerOn(self, pluginAction, dev):
@@ -560,11 +574,11 @@ class Plugin(indigo.PluginBase):
 		except:
 			indigo.server.log("No Device specified - add to action config")
 			return
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow=1&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow=1&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": switched on")
+		else:
 			indigo.server.log(dev.name + ": Unable to switch Daikin unit on, check IP Address")
 
 	def fanSpeed(self, pluginAction, dev):
@@ -578,12 +592,12 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + new_speed + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + new_speed + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
-			indigo.server.log(dev.name + ": Unable to set Daikin fan mode, check IP Address")
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": set fan speed to "+new_speed)
+		else:
+			indigo.server.log(dev.name + ": Unable to set fan speed")
 
 	def fanDirection(self, pluginAction, dev):
 		new_direction=pluginAction.props.get("direction")
@@ -596,12 +610,12 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
-			indigo.server.log(dev.name + ": Unable to set Daikin fan mode, check IP Address")
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": set fan mode to " + new_direction)
+		else:
+			indigo.server.log(dev.name + ": Unable to set fan mode")
 
 	def fanOnly(self, pluginAction, dev):
 		try:
@@ -613,12 +627,12 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow='+pow+'&mode=6&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=6&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
-			indigo.server.log(dev.name + ": Unable to set Daikin fan only mode, check IP Address")
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": set to fan only mode to ")
+		else:
+			indigo.server.log(dev.name + ": Unable to set fan only mode")
 
 	def deHum(self, pluginAction, dev):
 		try:
@@ -630,12 +644,12 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = 'http://' + controller_ip + '/aircon/set_control_info?pow='+pow+'&mode=2&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=2&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
-		try:
-			f = urllib2.urlopen(control_url)
-		except:
-			indigo.server.log(dev.name + ": Unable to set Daikin DeHum mode, check IP Address")
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": set dry mode to ")
+		else:
+			indigo.server.log(dev.name + ": Unable to set dry mode")
 
 	def changeTempSensorCountTo2(self):
 		self._changeAllTempSensorCounts(2)
@@ -659,12 +673,14 @@ class Plugin(indigo.PluginBase):
 
 	def validateDeviceConfigUi(self, valuesDict, dev_type, dev):
 		indigo.server.log(str(valuesDict))
-		indigo.server.log(str(dev))
 		try:
 			control_url = 'http://' + valuesDict['address'] + '/common/basic_info'
+			self.debugLog(control_url)
 			indigo.server.log(control_url)
-			indigo.server.log(control_url)
-			f = urllib2.urlopen(control_url,timeout=1)
+			response = requests.get(control_url, timeout=1)
+			if response.status_code != 200:
+				self.debugLog("Failed to retrieve " + control_url + " for " + dev.name, isError=True)
+				raise Exception("No connection")
 
 
 		except:
@@ -674,3 +690,15 @@ class Plugin(indigo.PluginBase):
 			return (False, valuesDict, errorsDict)
 
 		return (True, valuesDict)
+
+	########################################
+	# Menu Methods
+	########################################
+	def toggleDebugging(self):
+		if self.debug:
+			indigo.server.log("Turning off debug logging")
+			self.pluginPrefs["showDebugInfo"] = False
+		else:
+			indigo.server.log("Turning on debug logging")
+			self.pluginPrefs["showDebugInfo"] = True
+		self.debug = not self.debug

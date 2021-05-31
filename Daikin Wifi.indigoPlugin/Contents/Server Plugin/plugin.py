@@ -103,6 +103,10 @@ class Plugin(indigo.PluginBase):
 		X = 1
 	def makeAPIrequest(self, dev, api):
 		controller_ip = dev.pluginProps["address"]
+		try:
+			timeout = int(self.pluginPrefs['timeout'])
+		except:
+			timeout = 2
 		if dev.pluginProps["requireHTTPS"]:
 			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
 			#response = requests.get(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
@@ -110,7 +114,7 @@ class Plugin(indigo.PluginBase):
 			headers={}
 			#response = requests.get(self.baseURL(dev) + api, timeout=1)
 		try:
-			response = requests.get(self.baseURL(dev) + api, headers=headers, timeout=1)
+			response = requests.get(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
 		except requests.exceptions.HTTPError as err:
 		 	indigo.server.log("HTTP Error getting "+api+" from Daikin Unit "+dev.name)
@@ -125,6 +129,10 @@ class Plugin(indigo.PluginBase):
 	#
 	def sendAPIrequest(self, dev, api):
 		controller_ip = dev.pluginProps["address"]
+		try:
+			timeout = int(self.pluginPrefs['timeout'])
+		except:
+			timeout = 2
 		if dev.pluginProps["requireHTTPS"]:
 			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
 			#response = requests.post(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
@@ -133,7 +141,7 @@ class Plugin(indigo.PluginBase):
 			#response = requests.post(self.baseURL(dev) + api, timeout=1)
 		self.debugLog(self.baseURL(dev) + api)
 		try:
-			response = requests.post(self.baseURL(dev) + api, headers=headers, timeout=1)
+			response = requests.post(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
 		except requests.exceptions.HTTPError as err:
 		 	indigo.server.log("HTTP Error posting "+api+" from Daikin Unit "+dev.name, isError=True)
@@ -167,7 +175,7 @@ class Plugin(indigo.PluginBase):
 			returned_list.append(element.split('='))
 		#get sensor response data
 		sensor_response = self.makeAPIrequest(dev, '/aircon/get_sensor_info')
-		if control_response=="FAILED":
+		if sensor_response=="FAILED":
 			indigo.server.log("Failed to update "+dev.name+" aborting state refresh")
 			return
 		split_sensor = sensor_response.split(',')
@@ -214,9 +222,20 @@ class Plugin(indigo.PluginBase):
 			ui_fan_rate='Auto'
 		elif ac_data['f_rate']=='B':
 			ui_fan_rate='Silence'
+		ui_fan_dir=ac_data['f_dir']
+		if ac_data['f_dir']=="0":
+			ui_fan_dir="Stopped"
+		elif ac_data['f_dir']=="1":
+			ui_fan_dir="Vertical Motion"
+		elif ac_data['f_dir'] == "2":
+			ui_fan_dir = "Horizontal Motion"
+		elif ac_data['f_dir'] == "3":
+			ui_fan_dir = "Horizontal and Vertical Motion"
+
+
 
 		state_updates.append({'key': "fan_rate", 'value': ac_data['f_rate'], 'uiValue' : ui_fan_rate})
-		state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir']})
+		state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir'],'uiValue' : ui_fan_dir })
 		state_updates.append({'key': "outside_temp", 'value': ac_data['otemp'], 'uiValue' :  ac_data['otemp']+ stateSuffix})
 
 		if ac_data['mode']=='2':
@@ -269,22 +288,6 @@ class Plugin(indigo.PluginBase):
 		dev.updateStatesOnServer(state_updates)
 
 
-# dev.updateStateOnServer("operationMode", data['operation'])
-		# dev.updateStateOnServer("autoOperation", data['autoOperation'])
-		# dev.updateStateOnServer("operationTrigger", data['operationTrigger'])
-		# dev.updateStateOnServer("controlPhase", data['controlPhase'])
-		# dev.updateStateOnServer("boxConnected", data['boxConnected'])
-		# dev.updateStateOnServer("homeId", data['homeId'])
-		#
-		# if data['gwConnected']:
-		# 	dev.updateStateOnServer("gatewayConnected", True)
-		# else:
-		# 	dev.updateStateOnServer("gatewayConnected", False)
-		#
-		# if data['tsConnected']:
-		# 	dev.updateStateOnServer("temperatureSensorConnected", True)
-		# else:
-		# 	dev.updateStateOnServer("temperatureSensorConnected", False)
 
 
 		#	Other states that should also be updated:
@@ -677,7 +680,7 @@ class Plugin(indigo.PluginBase):
 			control_url = 'http://' + valuesDict['address'] + '/common/basic_info'
 			self.debugLog(control_url)
 			indigo.server.log(control_url)
-			response = requests.get(control_url, timeout=1)
+			response = requests.get(control_url, timeout=2)
 			if response.status_code != 200:
 				self.debugLog("Failed to retrieve " + control_url + " for " + dev.name, isError=True)
 				raise Exception("No connection")

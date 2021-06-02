@@ -11,4 +11,4 @@ Known issues
   The wifi controller may throw intermittent timeout errors to the log, these are now properly trapped and the default timeout has been increased and made configurable
   Testing has been limited, so be prepared to find bugs
   
-  Documentation via the wiki here, but this shoild be largely self explantory
+  Documentation via the wiki https://github.com/neilkplugins/Daikin-Wifi-indigo-plugin/wiki, but this shoild be largely self explantory

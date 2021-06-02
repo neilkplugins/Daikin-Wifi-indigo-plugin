@@ -5,11 +5,10 @@ The plugin allows you to create a device for each connected unit, and simply req
 
 I have mapped the functionality as closely as possible to the Indigo Thermostat model, and this appears to work but as my knowledge improves I will refine this.
 
-The thermostat specific actions should work as per a native Indigo thermostat.  For the fan modes, they do not map to the indigo device cleanly so they are implemented via customer device states and actions.
+The thermostat specific actions should work as per a native Indigo thermostat.  For the fan modes, they do not map to the indigo device cleanly so they are implemented via custom device states and actions.
 
 Known issues
-  The thermostat status icon selection needs refinement, this simply may stick in cool or heat mode but the actual functionality is not impacted.  I will need to do some more testing here.
-  I need to add readable fan mode and speed status codes to the custom device states
+  The wifi controller may throw intermittent timeout errors to the log, these are now properly trapped and the default timeout has been increased and made configurable
   Testing has been limited, so be prepared to find bugs
   
-  More documentation to follow, but this shoild be largely self explantory
+  Documentation via the wiki here, but this shoild be largely self explantory

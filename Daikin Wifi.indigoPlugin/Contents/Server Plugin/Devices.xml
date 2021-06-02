@@ -113,6 +113,9 @@
 					<Option value="C">Celcius</Option>
 				</List>
 			</Field>
+			<Field type="checkbox" id="SupportsEnergyMeter" defaultValue="true" hidden="true" />
+
+
 			
 		</ConfigUI>
 		<States>
@@ -201,6 +204,46 @@
 				<ValueType>Number</ValueType>
 				<TriggerLabel>Numeric Mode Value</TriggerLabel>
 				<ControlPageLabel>Numeric Mode</ControlPageLabel>
+			</State>
+			<State id="today_cool_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Today</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Today</ControlPageLabel>
+			</State>
+			<State id="today_heat_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Today</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Today</ControlPageLabel>
+			</State>
+			<State id="week_cool_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Week</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Week</ControlPageLabel>
+			</State>
+			<State id="week_heat_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Week</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Week</ControlPageLabel>
+			</State>
+			<State id="year_cool_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Year</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Year</ControlPageLabel>
+			</State>
+			<State id="year_heat_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Year</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Year</ControlPageLabel>
+			</State>
+			<State id="month_cool_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Month</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Month</ControlPageLabel>
+			</State>
+			<State id="month_heat_consump">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Energy Consumption Cooling - Month</TriggerLabel>
+				<ControlPageLabel>Energy Consumption Cooling - Month</ControlPageLabel>
 			</State>
 		</States>
 	</Device>

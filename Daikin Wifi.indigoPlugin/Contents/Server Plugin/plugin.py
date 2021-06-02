@@ -158,8 +158,24 @@ class Plugin(indigo.PluginBase):
 			return False
 
 		return True
-#
 
+	# Extract consumption values and return consumption in kWh for day and year
+	def calculate_consumption(self, consumption):
+		consumption_list = consumption.split('/')
+		raw_sum = sum([int(item) for item in consumption_list])
+		energy=round((raw_sum*0.1),1)
+		return energy
+
+	# Extract consumption values and return consumption in kWh for week to date
+	# needs extra parameter as weekly data is returned on a rolling 14 day basis so need to trim off the days we don't need and just total the days this week starting Monday
+	# consumption API returns this as s_wday
+	def calculate_week_consumption(self, consumption, day):
+		consumption_list = consumption.split('/')
+		raw_sum=0
+		for days in range(int(day)):
+			raw_sum=raw_sum + int(consumption_list[days])
+		energy = round((raw_sum * 0.1), 1)
+		return energy
 
 	# Daikin request
 	#
@@ -167,7 +183,7 @@ class Plugin(indigo.PluginBase):
 		# get control response data
 		control_response=self.makeAPIrequest(dev,'/aircon/get_control_info')
 		if control_response=="FAILED":
-			indigo.server.log("Failed to update "+dev.name+" aborting state refresh")
+			indigo.server.log("Failed to update control info "+dev.name+" aborting state refresh", isError=True)
 			return
 		split_control = control_response.split(',')
 		returned_list = []
@@ -176,16 +192,41 @@ class Plugin(indigo.PluginBase):
 		#get sensor response data
 		sensor_response = self.makeAPIrequest(dev, '/aircon/get_sensor_info')
 		if sensor_response=="FAILED":
-			indigo.server.log("Failed to update "+dev.name+" aborting state refresh")
+			indigo.server.log("Failed to update sensor "+dev.name+" aborting state refresh", isError=True)
 			return
 		split_sensor = sensor_response.split(',')
 		for element in split_sensor:
 			returned_list.append(element.split('='))
 		self.debugLog(str(returned_list))
+
+
+		day_consump=self.makeAPIrequest(dev,'/aircon/get_day_power_ex')
+		if day_consump=="FAILED":
+			indigo.server.log("Failed to update consumption "+dev.name+" aborting state refresh", isError=True)
+			return
+		split_day_consump=day_consump.split(',')
+		for element in split_day_consump:
+			returned_list.append(element.split('='))
+
+		week_consump = self.makeAPIrequest(dev, '/aircon/get_week_power_ex')
+		if week_consump == "FAILED":
+			indigo.server.log("Failed to update consumption " + dev.name + " aborting state refresh", isError=True)
+			return
+		split_week_consump = week_consump.split(',')
+		for element in split_week_consump:
+			returned_list.append(element.split('='))
+		year_consump = self.makeAPIrequest(dev, '/aircon/get_year_power_ex')
+		if year_consump == "FAILED":
+			indigo.server.log("Failed to update consumption " + dev.name + " aborting state refresh", isError=True)
+			return
+		split_year_consump = year_consump.split(',')
+		for element in split_year_consump:
+			returned_list.append(element.split('='))
+
+		self.debugLog(str(returned_list))
 		returned_dict = {}
 		for element in returned_list:
 			returned_dict[element[0]] = element[1]
-
 		return returned_dict
 		
 
@@ -205,9 +246,30 @@ class Plugin(indigo.PluginBase):
 			stateSuffix = u" °F"
 
 
-
 		state_updates = []
 		# Update the states necessary to make mode change (some duplication with the native device but potentially useful to have visible)
+
+		#Calculate consumption & update states
+		#day
+		today_cool_consump = self.calculate_consumption(ac_data['curr_day_cool'])
+		state_updates.append({'key': "today_cool_consump", 'value': today_cool_consump, 'uiValue' : str(today_cool_consump) + " kWh"})
+		today_heat_consump = self.calculate_consumption(ac_data['curr_day_heat'])
+		state_updates.append({'key': "today_heat_consump", 'value': today_heat_consump, 'uiValue' : str(today_heat_consump) + " kWh"})
+		#week
+		week_cool_consump = self.calculate_week_consumption(ac_data['week_cool'],ac_data['s_dayw'])
+		state_updates.append({'key': "week_cool_consump", 'value': week_cool_consump, 'uiValue' : str(week_cool_consump) + " kWh"})
+		week_heat_consump = self.calculate_week_consumption(ac_data['week_heat'],ac_data['s_dayw'])
+		state_updates.append({'key': "week_heat_consump", 'value': week_heat_consump, 'uiValue' : str(week_heat_consump) + " kWh"})
+		#year
+		year_cool_consump = self.calculate_consumption(ac_data['curr_year_cool'])
+		state_updates.append({'key': "year_cool_consump", 'value': year_cool_consump, 'uiValue' : str(year_cool_consump) + " kWh"})
+		year_heat_consump = self.calculate_consumption(ac_data['curr_year_heat'])
+		state_updates.append({'key': "year_heat_consump", 'value': year_heat_consump, 'uiValue' : str(year_heat_consump) + " kWh"})
+		total_consump=year_heat_consump+year_cool_consump+self.calculate_consumption(ac_data['prev_year_cool'])+self.calculate_consumption(ac_data['prev_year_heat'])
+		state_updates.append({'key': "accumEnergyTotal", 'value': total_consump, 'uiValue' : str(total_consump) + " kWh"})
+
+
+		# Update control and sensor info
 
 		state_updates.append({'key': "mode", 'value': ac_data['mode']})
 		state_updates.append({'key': "setpoint_temp", 'value': ac_data['stemp'], 'uiValue' : ac_data['stemp'] + stateSuffix})
@@ -675,12 +737,10 @@ class Plugin(indigo.PluginBase):
 #### Device Configuration validation
 
 	def validateDeviceConfigUi(self, valuesDict, dev_type, dev):
-		indigo.server.log(str(valuesDict))
 		try:
 			control_url = 'http://' + valuesDict['address'] + '/common/basic_info'
 			self.debugLog(control_url)
-			indigo.server.log(control_url)
-			response = requests.get(control_url, timeout=2)
+			response = requests.get(control_url, timeout=3)
 			if response.status_code != 200:
 				self.debugLog("Failed to retrieve " + control_url + " for " + dev.name, isError=True)
 				raise Exception("No connection")

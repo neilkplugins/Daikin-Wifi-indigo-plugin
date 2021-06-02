@@ -525,6 +525,7 @@ class Plugin(indigo.PluginBase):
 		# thermostat. If periodic polling of the thermostat is needed (that
 		# is, it doesn't broadcast changes back to the plugin somehow), then
 		# consider adding that to runConcurrentThread() above.
+		dev.stateListOrDisplayStateIdChanged()
 		self._refreshStatesFromHardware(dev, True, True)
 
 	def deviceStopComm(self, dev):

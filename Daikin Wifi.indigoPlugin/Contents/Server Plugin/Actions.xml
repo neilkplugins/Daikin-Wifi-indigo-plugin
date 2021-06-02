@@ -22,7 +22,7 @@
 		<CallbackMethod>fanOnly</CallbackMethod>
 	</Action>
 	<Action id="deHum" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Set De-Humify Mode</Name>
+		<Name>Set De-Humidify Mode</Name>
 		<CallbackMethod>deHum</CallbackMethod>
 	</Action>
 	<Action id="fanSpeed" uiPath="DeviceActions" deviceFilter="self">

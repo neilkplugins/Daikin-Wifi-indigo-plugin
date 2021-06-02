@@ -235,16 +235,7 @@
 				<TriggerLabel>Energy Consumption Cooling - Year</TriggerLabel>
 				<ControlPageLabel>Energy Consumption Cooling - Year</ControlPageLabel>
 			</State>
-			<State id="month_cool_consump">
-				<ValueType>Number</ValueType>
-				<TriggerLabel>Energy Consumption Cooling - Month</TriggerLabel>
-				<ControlPageLabel>Energy Consumption Cooling - Month</ControlPageLabel>
-			</State>
-			<State id="month_heat_consump">
-				<ValueType>Number</ValueType>
-				<TriggerLabel>Energy Consumption Cooling - Month</TriggerLabel>
-				<ControlPageLabel>Energy Consumption Cooling - Month</ControlPageLabel>
-			</State>
+
 		</States>
 	</Device>
 </Devices>

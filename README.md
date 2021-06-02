@@ -7,7 +7,8 @@ I have mapped the functionality as closely as possible to the Indigo Thermostat 
 
 The thermostat specific actions should work as per a native Indigo thermostat.  For the fan modes, they do not map to the indigo device cleanly so they are implemented via custom device states and actions.
 
-Known issues
+# Known issues
+
   The wifi controller may throw intermittent timeout errors to the log, these are now properly trapped and the default timeout has been increased and made configurable
   Testing has been limited, so be prepared to find bugs
   

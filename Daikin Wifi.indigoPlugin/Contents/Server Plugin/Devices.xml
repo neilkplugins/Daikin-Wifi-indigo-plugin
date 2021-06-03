@@ -175,12 +175,12 @@
 				<TriggerLabel>Set Point Temperature Stored Auto Mode</TriggerLabel>
 				<ControlPageLabel>Temperature Setpoint Stored Auto Mode</ControlPageLabel>
 			</State>
-			<State id="cool_setpoint">
+			<State id="last_cool_setpoint">
 				<ValueType>Number</ValueType>
 				<TriggerLabel>Set Point Temperature Stored Cool Mode</TriggerLabel>
 				<ControlPageLabel>Temperature Setpoint Stored Cool Mode</ControlPageLabel>
 			</State>
-			<State id="heat_setpoint">
+			<State id="last_heat_setpoint">
 				<ValueType>Number</ValueType>
 				<TriggerLabel>Set Point Temperature Stored Heat Mode</TriggerLabel>
 				<ControlPageLabel>Temperature Setpoint Stored Heat Mode</ControlPageLabel>

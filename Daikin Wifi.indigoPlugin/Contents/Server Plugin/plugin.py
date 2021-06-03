@@ -273,9 +273,9 @@ class Plugin(indigo.PluginBase):
 
 		state_updates.append({'key': "mode", 'value': ac_data['mode']})
 		state_updates.append({'key': "setpoint_temp", 'value': ac_data['stemp'], 'uiValue' : ac_data['stemp'] + stateSuffix})
-		state_updates.append({'key': "cool_setpoint", 'value': ac_data['dt3'], 'uiValue' : ac_data['dt3'] + stateSuffix})
-		state_updates.append({'key': "heat_setpoint", 'value': ac_data['dt4'], 'uiValue' : ac_data['dt4'] + stateSuffix})
-		state_updates.append({'key': "auto_setpoint", 'value': ac_data['dt1'], 'uiValue' : ac_data['dt3'] + stateSuffix})
+		state_updates.append({'key': "last_cool_setpoint", 'value': ac_data['dt3'], 'uiValue' : ac_data['dt3'] + stateSuffix})
+		state_updates.append({'key': "last_heat_setpoint", 'value': ac_data['dt4'], 'uiValue' : ac_data['dt4'] + stateSuffix})
+		state_updates.append({'key': "auto_setpoint", 'value': ac_data['dt1'], 'uiValue' : ac_data['dt1'] + stateSuffix})
 
 		state_updates.append({'key': "setpoint_humidity", 'value': ac_data['shum']})
 
@@ -304,12 +304,17 @@ class Plugin(indigo.PluginBase):
 			#2 IS De Humidify
 			state_updates.append({'key': "hvacOperationMode", 'value': 0})
 			state_updates.append({'key': "operationMode", 'value': 'De-Humidify'})
+			dev.updateStateImageOnServer(indigo.kStateImageSel.DehumidifierOn)
+
 		elif ac_data['mode']=='3':
 			#3 is Cool
 			state_updates.append({'key': "hvacOperationMode", 'value': 2})
 			state_updates.append({'key': "hvacHeaterIsOn", 'value': False})
 			state_updates.append({'key': "hvacCoolerIsOn", 'value': True})
 			state_updates.append({'key': "operationMode", 'value': 'Cooling'})
+		# 	state_updates.append({'key': "setpointCool", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacCoolMode)
+
 
 		elif ac_data['mode']=='4':
 			#4 is heat
@@ -317,15 +322,22 @@ class Plugin(indigo.PluginBase):
 			state_updates.append({'key': "hvacHeaterIsOn", 'value': True})
 			state_updates.append({'key': "hvacCoolerIsOn", 'value': False})
 			state_updates.append({'key': "operationMode", 'value': 'Heating'})
+		# 	state_updates.append({'key': "setpointHeat", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacHeatMode)
+
 
 		elif ac_data['mode']=='6':
 			#fan mode 6
 			state_updates.append({'key': "hvacOperationMode", 'value': 0})
 			state_updates.append({'key': "operationMode", 'value': 'Fan'})
+			dev.updateStateImageOnServer(indigo.kStateImageSel.FanHigh)
+
 
 		else:
 			state_updates.append({'key': "hvacOperationMode", 'value': 3})
 			state_updates.append({'key': "operationMode", 'value': 'Auto'})
+			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacAutoMode)
+
 
 		# Order here is important as if the power is off then these states must be the last to update as "cooling" etc is reported even when off
 		if ac_data['pow']=='1':
@@ -343,9 +355,9 @@ class Plugin(indigo.PluginBase):
 		#
 		if (ac_data['stemp'] == '--' or ac_data['stemp'] == 'M'):
 			self.debugLog("No setpoint in fan or dry mode")
-		else:
-			state_updates.append({'key': "setpointHeat", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
-			state_updates.append({'key': "setpointCool", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+		# else:
+		# 	state_updates.append({'key': "setpointHeat", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+		# 	state_updates.append({'key': "setpointCool", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
 
 		dev.updateStatesOnServer(state_updates)
 
@@ -399,18 +411,20 @@ class Plugin(indigo.PluginBase):
 			#implement set mode function
 			mode=4
 			pow=1
-			setpoint=str(dev.states['heat_setpoint'])
+			setpoint=str(dev.states['setpointHeat'])
 		if 'cool' in actionStr:
 			#implement set mode function
 			mode=3
 			pow=1
-			setpoint=str(dev.states['cool_setpoint'])
+			setpoint=str(dev.states['setpointCool'])
 
 		if 'auto' in actionStr:
 			#implement set mode function
 			mode=0
 			pow=1
 			setpoint=str(dev.states['auto_setpoint'])
+			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacAutoMode)
+
 
 		if 'off' in actionStr:
 			#implement set mode function
@@ -451,7 +465,7 @@ class Plugin(indigo.PluginBase):
 	######################
 	# Process action request from Indigo Server to change a cool/heat setpoint.
 	def _handleChangeSetpointAction(self, dev, newSetpoint, logActionName, stateKey):
-
+		indigo.server.log(str(stateKey))
 		if dev.pluginProps["measurement"] == "C":
 			if newSetpoint < 10.0:
 				newSetpoint = 10.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
@@ -481,7 +495,12 @@ class Plugin(indigo.PluginBase):
 
 			# And then tell the Indigo Server to update the state.
 			if stateKey in dev.states:
-				dev.updateStateOnServer(stateKey, newSetpoint, uiValue="%.1f °F" % (newSetpoint))
+				indigo.server.log("Noodle Doodle")
+				if dev.pluginProps["measurement"] == "C":
+					stateSuffix = u" °C"
+				else:
+					stateSuffix = u" °F"
+				dev.updateStateOnServer(stateKey, newSetpoint, uiValue=str(newSetpoint)+stateSuffix)
 		else:
 			# Else log failure but do NOT update state on Indigo Server.
 			indigo.server.log(u"send \"%s\" %s to %.1f° failed" % (dev.name, logActionName, newSetpoint), isError=True)

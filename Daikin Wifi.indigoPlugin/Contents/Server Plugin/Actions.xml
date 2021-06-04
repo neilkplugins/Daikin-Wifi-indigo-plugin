@@ -58,5 +58,36 @@
 			</Field>
 		</ConfigUI>
 	</Action>
+		<Action id="setAutoSetpoint" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Set Auto Setpoint to</Name>
+		<CallbackMethod>setAutoSetpoint</CallbackMethod>
+		<ConfigUI>
+			<Field id="setpoint" type="textfield" defaultValue="21">
+			<Label>Auto Mode Setpoint:</Label>
 
+			</Field>
+		</ConfigUI>
+	</Action>
+		<Action id="increaseAutoSetpoint" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Increase Auto Setpoint</Name>
+		<CallbackMethod>increaseAutoSetpoint</CallbackMethod>
+		<ConfigUI>
+			<Field id="delta" type="textfield" defaultValue="1">
+			<Label>Increase Delta:</Label>
+				<Description>degrees</Description>
+
+			</Field>
+		</ConfigUI>
+	</Action>
+		<Action id="decreaseAutoSetpoint" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Decrease Auto Setpoint</Name>
+		<CallbackMethod>decreaseAutoSetpoint</CallbackMethod>
+		<ConfigUI>
+			<Field id="delta" type="textfield" defaultValue="1">
+			<Label>Decrease Delta:</Label>
+				<Description>degrees</Description>
+
+			</Field>
+		</ConfigUI>
+	</Action>
 </Actions>

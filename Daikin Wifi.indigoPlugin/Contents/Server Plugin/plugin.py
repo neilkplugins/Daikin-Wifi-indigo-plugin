@@ -264,7 +264,7 @@ class Plugin(indigo.PluginBase):
 		year_cool_consump = self.calculate_consumption(ac_data['curr_year_cool'])
 		state_updates.append({'key': "year_cool_consump", 'value': year_cool_consump, 'uiValue' : str(year_cool_consump) + " kWh"})
 		year_heat_consump = self.calculate_consumption(ac_data['curr_year_heat'])
-		state_updates.append({'key': "year_heat_consump", 'value': year_heat_consump, 'uiValue' : str(year_heat_consump) + " kWh"})
+		state_updates.append({'key': "year_heat_consump", 'value': round(year_heat_consump,1), 'uiValue' : str(round(year_heat_consump,1)) + " kWh"})
 		total_consump=year_heat_consump+year_cool_consump+self.calculate_consumption(ac_data['prev_year_cool'])+self.calculate_consumption(ac_data['prev_year_heat'])
 		state_updates.append({'key': "accumEnergyTotal", 'value': total_consump, 'uiValue' : str(total_consump) + " kWh"})
 
@@ -275,7 +275,17 @@ class Plugin(indigo.PluginBase):
 		state_updates.append({'key': "setpoint_temp", 'value': ac_data['stemp'], 'uiValue' : ac_data['stemp'] + stateSuffix})
 		state_updates.append({'key': "last_cool_setpoint", 'value': ac_data['dt3'], 'uiValue' : ac_data['dt3'] + stateSuffix})
 		state_updates.append({'key': "last_heat_setpoint", 'value': ac_data['dt4'], 'uiValue' : ac_data['dt4'] + stateSuffix})
-		state_updates.append({'key': "auto_setpoint", 'value': ac_data['dt1'], 'uiValue' : ac_data['dt1'] + stateSuffix})
+		# if initial update the sepoints will be zero, so we need to set them to the last value stored on the device
+		if dev.states["setpointCool"] < 10:
+			state_updates.append({'key': "setpointCool", 'value': float(ac_data['dt3']), 'uiValue' : ac_data['dt3'] + stateSuffix})
+		if dev.states["setpointHeat"] < 10:
+			state_updates.append({'key': "setpointHeat", 'value': float(ac_data['dt4']), 'uiValue' : ac_data['dt4'] + stateSuffix})
+		if dev.states["auto_setpoint"] < 10:
+			state_updates.append({'key': "auto_setpoint", 'value': float(ac_data['dt1']), 'uiValue' : ac_data['dt1'] + stateSuffix})
+
+		#state_updates.append({'key': "auto_setpoint", 'value': ac_data['dt1'], 'uiValue' : ac_data['dt1'] + stateSuffix})
+
+
 
 		state_updates.append({'key': "setpoint_humidity", 'value': ac_data['shum']})
 
@@ -312,7 +322,8 @@ class Plugin(indigo.PluginBase):
 			state_updates.append({'key': "hvacHeaterIsOn", 'value': False})
 			state_updates.append({'key': "hvacCoolerIsOn", 'value': True})
 			state_updates.append({'key': "operationMode", 'value': 'Cooling'})
-		# 	state_updates.append({'key': "setpointCool", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+			if dev.pluginProps['sync_setpoints']:
+				state_updates.append({'key': "setpointCool", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
 			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacCoolMode)
 
 
@@ -322,7 +333,8 @@ class Plugin(indigo.PluginBase):
 			state_updates.append({'key': "hvacHeaterIsOn", 'value': True})
 			state_updates.append({'key': "hvacCoolerIsOn", 'value': False})
 			state_updates.append({'key': "operationMode", 'value': 'Heating'})
-		# 	state_updates.append({'key': "setpointHeat", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
+			if dev.pluginProps['sync_setpoints']:
+				state_updates.append({'key': "setpointHeat", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
 			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacHeatMode)
 
 
@@ -337,6 +349,8 @@ class Plugin(indigo.PluginBase):
 			state_updates.append({'key': "hvacOperationMode", 'value': 3})
 			state_updates.append({'key': "operationMode", 'value': 'Auto'})
 			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacAutoMode)
+			if dev.pluginProps['sync_setpoints']:
+				state_updates.append({'key': "auto_setpoint", 'value': float(ac_data['stemp']), 'uiValue' : ac_data['stemp'] + stateSuffix})
 
 
 		# Order here is important as if the power is off then these states must be the last to update as "cooling" etc is reported even when off
@@ -465,7 +479,6 @@ class Plugin(indigo.PluginBase):
 	######################
 	# Process action request from Indigo Server to change a cool/heat setpoint.
 	def _handleChangeSetpointAction(self, dev, newSetpoint, logActionName, stateKey):
-		indigo.server.log(str(stateKey))
 		if dev.pluginProps["measurement"] == "C":
 			if newSetpoint < 10.0:
 				newSetpoint = 10.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
@@ -495,7 +508,6 @@ class Plugin(indigo.PluginBase):
 
 			# And then tell the Indigo Server to update the state.
 			if stateKey in dev.states:
-				indigo.server.log("Noodle Doodle")
 				if dev.pluginProps["measurement"] == "C":
 					stateSuffix = u" °C"
 				else:
@@ -635,11 +647,106 @@ class Plugin(indigo.PluginBase):
 			indigo.server.log(u"sent \"%s\" %s" % (dev.name, "status request"))
 
 
-	########################################
-	# Actions defined in MenuItems.xml. In this case we just use these menu actions to
-	# simulate different thermostat configurations (how many temperature and humidity
-	# sensors they have).
-	####################
+	def setAutoSetpoint(self,pluginAction,dev):
+		if dev.pluginProps["measurement"] == "C":
+			stateSuffix = u" °C"
+		else:
+			stateSuffix = u" °F"
+		#first update setpoint
+		dev.updateStateOnServer('auto_setpoint', float(pluginAction.props.get("setpoint")), uiValue=str(float(pluginAction.props.get("setpoint"))) + stateSuffix)
+		indigo.server.log(pluginAction.props.get("setpoint"))
+		# and if in auto mode also apply that to stemp to change the current setpoint
+		if dev.states['operationMode']=="Auto":
+			if dev.states['unit_power']=="on":
+				pow='1'
+			else:
+				pow='0'
+
+			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + pluginAction.props.get('setpoint') + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+			if self.sendAPIrequest(dev, api_url):
+				# If success then log that the command was successfully sent.
+				indigo.server.log(u"Updated Auto Setpoint to "+ pluginAction.props.get('setpoint')+ " for "+dev.name)
+
+			else:
+				# Else log failure but do NOT update state on Indigo Server.
+				indigo.server.log(u"send setpoint change to "+pluginAction.props.get('setpoint')+" for "+dev.name)
+
+	def increaseAutoSetpoint(self, pluginAction, dev):
+		if dev.pluginProps["measurement"] == "C":
+			stateSuffix = u" °C"
+		else:
+			stateSuffix = u" °F"
+		# first update setpoint
+		newsetpoint=float(dev.states['auto_setpoint'])+float(pluginAction.props.get("delta"))
+		if dev.pluginProps["measurement"] == "C":
+			if newsetpoint < 10.0:
+				newsetpoint = 10.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
+			elif newsetpoint > 30.0:
+				newsetpoint = 30.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
+		else:
+			if newsetpoint < 50.0:
+				newsetpoint = 50.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
+			elif newsetpoint > 86.0:
+				newsetpoint = 86.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
+
+		indigo.server.log("New Auto Setpoint is "+str(newsetpoint))
+		dev.updateStateOnServer('auto_setpoint', newsetpoint,uiValue=str(newsetpoint) + stateSuffix)
+		# and if in auto mode also apply that to stemp to change the current setpoint
+		if dev.states['operationMode'] == "Auto":
+			if dev.states['unit_power'] == "on":
+				pow = '1'
+			else:
+				pow = '0'
+
+			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + str(newsetpoint) + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(
+				dev.states['fan_direction'])
+			if self.sendAPIrequest(dev, api_url):
+				# If success then log that the command was successfully sent.
+				indigo.server.log(
+					u"Updated Auto Setpoint to " + str(newsetpoint) + " for " + dev.name)
+
+			else:
+				# Else log failure but do NOT update state on Indigo Server.
+				indigo.server.log(u"send setpoint change to " + str(newsetpoint) + " for " + dev.name)
+
+	def decreaseAutoSetpoint(self, pluginAction, dev):
+		if dev.pluginProps["measurement"] == "C":
+			stateSuffix = u" °C"
+		else:
+			stateSuffix = u" °F"
+		# first update setpoint
+		newsetpoint=float(dev.states['auto_setpoint'])-float(pluginAction.props.get("delta"))
+		if dev.pluginProps["measurement"] == "C":
+			if newsetpoint < 10.0:
+				newsetpoint = 10.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
+			elif newsetpoint > 30.0:
+				newsetpoint = 30.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
+		else:
+			if newsetpoint < 50.0:
+				newsetpoint = 50.0		# Arbitrary -- set to whatever hardware minimum setpoint value is.
+			elif newsetpoint > 86.0:
+				newsetpoint = 86.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
+
+		indigo.server.log("New Auto Setpoint is "+str(newsetpoint))
+		dev.updateStateOnServer('auto_setpoint', newsetpoint,uiValue=str(newsetpoint) + stateSuffix)
+		# and if in auto mode also apply that to stemp to change the current setpoint
+		if dev.states['operationMode'] == "Auto":
+			if dev.states['unit_power'] == "on":
+				pow = '1'
+			else:
+				pow = '0'
+
+			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + str(newsetpoint) + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(
+				dev.states['fan_direction'])
+			if self.sendAPIrequest(dev, api_url):
+				# If success then log that the command was successfully sent.
+				indigo.server.log(
+					u"Updated Auto Setpoint to " + str(newsetpoint) + " for " + dev.name)
+
+			else:
+				# Else log failure but do NOT update state on Indigo Server.
+				indigo.server.log(u"send setpoint change to " + str(newsetpoint) + " for " + dev.name)
+
 	def powerOff(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]

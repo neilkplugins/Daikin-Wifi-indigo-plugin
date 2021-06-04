@@ -114,8 +114,10 @@
 				</List>
 			</Field>
 			<Field type="checkbox" id="SupportsEnergyMeter" defaultValue="true" hidden="true" />
-
-
+			<Field type="checkbox" id="sync_setpoints" defaultValue="true" hidden="false" >
+			<Label>Synchronise Indigo and Controller Set Points:</Label>
+				<Description>Allows App/Remote to update Set Points in Indigo</Description>
+			</Field>
 			
 		</ConfigUI>
 		<States>

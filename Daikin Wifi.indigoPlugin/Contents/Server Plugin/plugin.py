@@ -423,18 +423,18 @@ class Plugin(indigo.PluginBase):
 		self.debugLog("action string is "+actionStr)
 		if 'heat' in actionStr:
 			#implement set mode function
-			mode=4
+			mode="4"
 			pow=1
 			setpoint=str(dev.states['setpointHeat'])
 		if 'cool' in actionStr:
 			#implement set mode function
-			mode=3
+			mode="3"
 			pow=1
 			setpoint=str(dev.states['setpointCool'])
 
 		if 'auto' in actionStr:
 			#implement set mode function
-			mode=0
+			mode="0"
 			pow=1
 			setpoint=str(dev.states['auto_setpoint'])
 			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacAutoMode)
@@ -444,7 +444,7 @@ class Plugin(indigo.PluginBase):
 			#implement set mode function
 			pow=0
 
-		api_url='/aircon/set_control_info?pow='+str(pow)+'&mode='+str(mode)+'&stemp='+setpoint+'&shum=0&f_rate='+str(dev.states['fan_rate'])+'&f_dir='+str(dev.states['fan_direction'])
+		api_url='/aircon/set_control_info?pow='+str(pow)+'&mode='+mode+'&stemp='+setpoint+'&shum=0&f_rate='+str(dev.states['fan_rate'])+'&f_dir='+str(dev.states['fan_direction'])
 		if self.sendAPIrequest(dev,api_url):
 
 			# If success then log that the command was successfully sent.
@@ -495,7 +495,7 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + str(dev.states['mode']) + '&stemp=' + str(newSetpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + dev.states['mode'] + '&stemp=' + str(newSetpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
 		if self.sendAPIrequest(dev, control_url):
 			sendSuccess = True
@@ -753,7 +753,7 @@ class Plugin(indigo.PluginBase):
 		except:
 			indigo.server.log("No Device specified - add to action config")
 			return
-		control_url = '/aircon/set_control_info?pow=0&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow=0&mode=' + dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
 		if self.sendAPIrequest(dev, control_url):
 			indigo.server.log(dev.name + ": switched off")
@@ -766,7 +766,7 @@ class Plugin(indigo.PluginBase):
 		except:
 			indigo.server.log("No Device specified - add to action config")
 			return
-		control_url = '/aircon/set_control_info?pow=1&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow=1&mode=' + dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
 		if self.sendAPIrequest(dev, control_url):
 			indigo.server.log(dev.name + ": switched on")
@@ -784,7 +784,7 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + new_speed + '&f_dir=' + str(dev.states['fan_direction'])
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + new_speed + '&f_dir=' + str(dev.states['fan_direction'])
 		indigo.server.log(control_url)
 		if self.sendAPIrequest(dev, control_url):
 			indigo.server.log(dev.name + ": set fan speed to "+new_speed)
@@ -802,7 +802,7 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + str(dev.states['mode']) + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' +dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
 		indigo.server.log(control_url)
 		if self.sendAPIrequest(dev, control_url):
 			indigo.server.log(dev.name + ": set fan mode to " + new_direction)

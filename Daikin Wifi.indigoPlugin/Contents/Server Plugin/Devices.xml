@@ -203,7 +203,7 @@
 				<ControlPageLabel>Fan Direction</ControlPageLabel>
 			</State>
 			<State id="mode">
-				<ValueType>Number</ValueType>
+				<ValueType>String</ValueType>
 				<TriggerLabel>Numeric Mode Value</TriggerLabel>
 				<ControlPageLabel>Numeric Mode</ControlPageLabel>
 			</State>

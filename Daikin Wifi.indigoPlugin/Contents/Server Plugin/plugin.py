@@ -77,13 +77,13 @@ class Plugin(indigo.PluginBase):
 			response = requests.get(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
 		except requests.exceptions.HTTPError as err:
-		 	indigo.server.log("HTTP Error getting "+api+" from Daikin Unit "+dev.name)
-		 	self.debugLog("Error is " + str(err))
+			indigo.server.log("HTTP Error getting "+api+" from Daikin Unit "+dev.name)
+			self.debugLog("Error is " + str(err))
 			return "FAILED"
 
 		except Exception as err:
-		 	indigo.server.log("Unknown/Other Error getting "+api+" from Daikin Unit "+dev.name)
-		 	self.debugLog("Error is " + str(err))
+			indigo.server.log("Unknown/Other Error getting "+api+" from Daikin Unit "+dev.name)
+			self.debugLog("Error is " + str(err))
 			return "FAILED"
 		return response.text
 	#
@@ -104,17 +104,17 @@ class Plugin(indigo.PluginBase):
 			response = requests.post(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
 		except requests.exceptions.HTTPError as err:
-		 	indigo.server.log("HTTP Error posting "+api+" from Daikin Unit "+dev.name, isError=True)
-		 	self.debugLog("Error is " + str(err))
+			indigo.server.log("HTTP Error posting "+api+" from Daikin Unit "+dev.name, isError=True)
+			self.debugLog("Error is " + str(err))
 			return False
 
 		except Exception as err:
-		 	indigo.server.log("Unknown/Other Error setting "+api+" from Daikin Unit "+dev.name, isError=True)
-		 	self.debugLog("Error is " + str(err))
+			indigo.server.log("Unknown/Other Error setting "+api+" from Daikin Unit "+dev.name, isError=True)
+			self.debugLog("Error is " + str(err))
 			return False
 		self.debugLog(response.text)
 		if response.text=="ret=PARAM NG":
-			indigo.server.log("Request to update was processed but not sucessful " + api + " from Daikin Unit " + dev.name, isError=True)
+			indigo.server.log("Request to update was processed but not successful " + api + " from Daikin Unit " + dev.name, isError=True)
 			return False
 
 		return True
@@ -211,23 +211,25 @@ class Plugin(indigo.PluginBase):
 
 		#Calculate consumption & update states
 		#day
-		today_cool_consump = self.calculate_consumption(ac_data['curr_day_cool'])
-		state_updates.append({'key': "today_cool_consump", 'value': today_cool_consump, 'uiValue' : str(today_cool_consump) + " kWh"})
-		today_heat_consump = self.calculate_consumption(ac_data['curr_day_heat'])
-		state_updates.append({'key': "today_heat_consump", 'value': today_heat_consump, 'uiValue' : str(today_heat_consump) + " kWh"})
-		#week
-		week_cool_consump = self.calculate_week_consumption(ac_data['week_cool'],ac_data['s_dayw'])
-		state_updates.append({'key': "week_cool_consump", 'value': week_cool_consump, 'uiValue' : str(week_cool_consump) + " kWh"})
-		week_heat_consump = self.calculate_week_consumption(ac_data['week_heat'],ac_data['s_dayw'])
-		state_updates.append({'key': "week_heat_consump", 'value': week_heat_consump, 'uiValue' : str(week_heat_consump) + " kWh"})
-		#year
-		year_cool_consump = self.calculate_consumption(ac_data['curr_year_cool'])
-		state_updates.append({'key': "year_cool_consump", 'value': year_cool_consump, 'uiValue' : str(year_cool_consump) + " kWh"})
-		year_heat_consump = self.calculate_consumption(ac_data['curr_year_heat'])
-		state_updates.append({'key': "year_heat_consump", 'value': round(year_heat_consump,1), 'uiValue' : str(round(year_heat_consump,1)) + " kWh"})
-		total_consump=year_heat_consump+year_cool_consump+self.calculate_consumption(ac_data['prev_year_cool'])+self.calculate_consumption(ac_data['prev_year_heat'])
-		state_updates.append({'key': "accumEnergyTotal", 'value': total_consump, 'uiValue' : str(total_consump) + " kWh"})
-
+		try:
+			today_cool_consump = self.calculate_consumption(ac_data['curr_day_cool'])
+			state_updates.append({'key': "today_cool_consump", 'value': today_cool_consump, 'uiValue' : str(today_cool_consump) + " kWh"})
+			today_heat_consump = self.calculate_consumption(ac_data['curr_day_heat'])
+			state_updates.append({'key': "today_heat_consump", 'value': today_heat_consump, 'uiValue' : str(today_heat_consump) + " kWh"})
+			#week
+			week_cool_consump = self.calculate_week_consumption(ac_data['week_cool'],ac_data['s_dayw'])
+			state_updates.append({'key': "week_cool_consump", 'value': week_cool_consump, 'uiValue' : str(week_cool_consump) + " kWh"})
+			week_heat_consump = self.calculate_week_consumption(ac_data['week_heat'],ac_data['s_dayw'])
+			state_updates.append({'key': "week_heat_consump", 'value': week_heat_consump, 'uiValue' : str(week_heat_consump) + " kWh"})
+			#year
+			year_cool_consump = self.calculate_consumption(ac_data['curr_year_cool'])
+			state_updates.append({'key': "year_cool_consump", 'value': year_cool_consump, 'uiValue' : str(year_cool_consump) + " kWh"})
+			year_heat_consump = self.calculate_consumption(ac_data['curr_year_heat'])
+			state_updates.append({'key': "year_heat_consump", 'value': round(year_heat_consump,1), 'uiValue' : str(round(year_heat_consump,1)) + " kWh"})
+			total_consump=year_heat_consump+year_cool_consump+self.calculate_consumption(ac_data['prev_year_cool'])+self.calculate_consumption(ac_data['prev_year_heat'])
+			state_updates.append({'key': "accumEnergyTotal", 'value': total_consump, 'uiValue' : str(total_consump) + " kWh"})
+		except:
+			self.debugLog("Consumption data not returned and skipped consumption state updates for "+dev.name)
 
 		# Update control and sensor info
 

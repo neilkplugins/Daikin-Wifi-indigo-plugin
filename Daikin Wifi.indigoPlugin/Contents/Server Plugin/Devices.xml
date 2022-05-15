@@ -110,7 +110,7 @@
 				<Label>Show temps in:</Label>
 				<List>
 					<Option value="F">Fahrenheit</Option>
-					<Option value="C">Celcius</Option>
+					<Option value="C">Celsius</Option>
 				</List>
 			</Field>
 			<Field type="checkbox" id="SupportsEnergyMeter" defaultValue="true" hidden="true" />

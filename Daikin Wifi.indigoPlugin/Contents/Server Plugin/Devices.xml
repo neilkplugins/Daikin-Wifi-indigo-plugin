@@ -202,6 +202,16 @@
 				<TriggerLabel>Fan Direction</TriggerLabel>
 				<ControlPageLabel>Fan Direction</ControlPageLabel>
 			</State>
+			<State id="fan_direction_up_down">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Fan Direction - Up Down</TriggerLabel>
+				<ControlPageLabel>Fan Direction - Up Down</ControlPageLabel>
+			</State>
+			<State id="fan_direction_left_right">
+				<ValueType>Number</ValueType>
+				<TriggerLabel>Fan Direction - Left Right</TriggerLabel>
+				<ControlPageLabel>Fan Direction - Left Right</ControlPageLabel>
+			</State>
 			<State id="mode">
 				<ValueType>String</ValueType>
 				<TriggerLabel>Numeric Mode Value</TriggerLabel>

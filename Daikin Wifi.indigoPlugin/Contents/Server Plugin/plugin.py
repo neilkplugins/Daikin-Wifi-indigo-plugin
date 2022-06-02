@@ -253,20 +253,33 @@ class Plugin(indigo.PluginBase):
 			ui_fan_rate='Auto'
 		elif ac_data['f_rate']=='B':
 			ui_fan_rate='Silence'
-		ui_fan_dir=ac_data['f_dir']
-		if ac_data['f_dir']=="0":
-			ui_fan_dir="Stopped"
-		elif ac_data['f_dir']=="1":
-			ui_fan_dir="Vertical Motion"
-		elif ac_data['f_dir'] == "2":
-			ui_fan_dir = "Horizontal Motion"
-		elif ac_data['f_dir'] == "3":
-			ui_fan_dir = "Horizontal and Vertical Motion"
-
-
+		if 'f_dir' in ac_data:
+			ui_fan_dir=ac_data['f_dir']
+			if ac_data['f_dir']=="0":
+				ui_fan_dir="Stopped"
+			elif ac_data['f_dir']=="1":
+				ui_fan_dir="Vertical Motion"
+			elif ac_data['f_dir'] == "2":
+				ui_fan_dir = "Horizontal Motion"
+			elif ac_data['f_dir'] == "3":
+				ui_fan_dir = "Horizontal and Vertical Motion"
+			state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir'],'uiValue' : ui_fan_dir })
+		if 'f_dir_ud' in ac_data:
+			ui_fan_dir_ud = ac_data['f_dir_ud']
+			if ac_data['f_dir_ud'] == "0":
+				ui_fan_dir_ud = "Stopped"
+			elif ac_data['f_dir_fd'] == "1":
+				ui_fan_dir_ud = "Up/Down"
+			state_updates.append({'key': "fan_direction_up_down", 'value': ac_data['f_dir_ud'], 'uiValue': ui_fan_dir_ud})
+		if 'f_dir_lr' in ac_data:
+			ui_fan_dir_lr = ac_data['f_dir_ud']
+			if ac_data['f_dir_lr'] == "0":
+				ui_fan_dir_lr = "Stopped"
+			elif ac_data['f_dir_lr'] == "1":
+				ui_fan_dir_lr = "Left/Right"
+			state_updates.append({'key': "fan_direction_left_right", 'value': ac_data['f_dir_lr'], 'uiValue': ui_fan_dir_lr})
 
 		state_updates.append({'key': "fan_rate", 'value': ac_data['f_rate'], 'uiValue' : ui_fan_rate})
-		state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir'],'uiValue' : ui_fan_dir })
 		state_updates.append({'key': "outside_temp", 'value': ac_data['otemp'], 'uiValue' :  ac_data['otemp']+ stateSuffix})
 
 		if ac_data['mode']=='2':

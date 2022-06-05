@@ -268,14 +268,14 @@ class Plugin(indigo.PluginBase):
 			ui_fan_dir_ud = ac_data['f_dir_ud']
 			if ac_data['f_dir_ud'] == "0":
 				ui_fan_dir_ud = "Stopped"
-			elif ac_data['f_dir_fd'] == "1":
+			elif ac_data['f_dir_ud'] == "S":
 				ui_fan_dir_ud = "Up/Down"
 			state_updates.append({'key': "fan_direction_up_down", 'value': ac_data['f_dir_ud'], 'uiValue': ui_fan_dir_ud})
 		if 'f_dir_lr' in ac_data:
 			ui_fan_dir_lr = ac_data['f_dir_ud']
 			if ac_data['f_dir_lr'] == "0":
 				ui_fan_dir_lr = "Stopped"
-			elif ac_data['f_dir_lr'] == "1":
+			elif ac_data['f_dir_lr'] == "S":
 				ui_fan_dir_lr = "Left/Right"
 			state_updates.append({'key': "fan_direction_left_right", 'value': ac_data['f_dir_lr'], 'uiValue': ui_fan_dir_lr})
 
@@ -726,7 +726,45 @@ class Plugin(indigo.PluginBase):
 			indigo.server.log(dev.name + ": set fan mode to " + new_direction)
 		else:
 			indigo.server.log(dev.name + ": Unable to set fan mode")
+	#Add actions for the Alira model that has seperate up/down and left/right states
+	def fanDirectionUD(self, pluginAction, dev):
+		new_direction=str(pluginAction.props.get("directionUD"))
+		try:
+			controller_ip = dev.pluginProps["address"]
+		except:
+			indigo.server.log("No Device specified - add to action config")
+			return
+		if dev.states['unit_power']=="on":
+			pow='1'
+		else:
+			pow='0'
+		self.debugLog("Fan direction is "+new_direction)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' +dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir_ud=' + new_direction)
+		self.debugLog(control_url)
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": set fan DirectionUD to " + new_direction)
+		else:
+			indigo.server.log(dev.name + ": Unable to set fan DirectionUD")
 
+	def fanDirectionLR(self, pluginAction, dev):
+			new_direction = str(pluginAction.props.get("directionLR"))
+			try:
+				controller_ip = dev.pluginProps["address"]
+			except:
+				indigo.server.log("No Device specified - add to action config")
+				return
+			if dev.states['unit_power'] == "on":
+				pow = '1'
+			else:
+				pow = '0'
+			control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + dev.states['mode'] + '&stemp=' + str(
+				dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(
+				dev.states['fan_rate'] + '&f_dir_LR=' + new_direction)
+			self.debugLog(control_url)
+			if self.sendAPIrequest(dev, control_url):
+				indigo.server.log(dev.name + ": set fan direction LR to " + new_direction)
+			else:
+				indigo.server.log(dev.name + ": Unable to set fan direction LR")
 	def fanOnly(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]

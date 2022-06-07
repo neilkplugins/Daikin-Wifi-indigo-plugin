@@ -74,7 +74,7 @@
 	</Action>
 	<Action id="fanDirectionLR" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Set Fan Direction Alira - Left/Right</Name>
-		<CallbackMethod>fanDirectionUD</CallbackMethod>
+		<CallbackMethod>fanDirectionLR</CallbackMethod>
 		<ConfigUI>
 			<Field id="directionLR" type="menu" defaultValue="0">
 			<Label>Choose:</Label>

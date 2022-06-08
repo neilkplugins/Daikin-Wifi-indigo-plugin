@@ -742,9 +742,9 @@ class Plugin(indigo.PluginBase):
 		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' +dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir_ud=' + new_direction)
 		self.debugLog(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set fan DirectionUD to " + new_direction)
+			indigo.server.log(dev.name + ": set fan Direction Up/Down to " + new_direction+" (S is enabled, 0 is disabled)")
 		else:
-			indigo.server.log(dev.name + ": Unable to set fan DirectionUD")
+			indigo.server.log(dev.name + ": Unable to set fan Direction Up/Down")
 
 	def fanDirectionLR(self, pluginAction, dev):
 			new_direction = str(pluginAction.props.get("directionLR"))
@@ -759,12 +759,12 @@ class Plugin(indigo.PluginBase):
 				pow = '0'
 			control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + dev.states['mode'] + '&stemp=' + str(
 				dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(
-				dev.states['fan_rate'] + '&f_dir_LR=' + new_direction)
+				dev.states['fan_rate'] + '&f_dir_lr=' + new_direction)
 			self.debugLog(control_url)
 			if self.sendAPIrequest(dev, control_url):
-				indigo.server.log(dev.name + ": set fan direction LR to " + new_direction)
+				indigo.server.log(dev.name + ": Set fan direction Left/Right to " + new_direction+" (S is enabled, 0 is disabled)")
 			else:
-				indigo.server.log(dev.name + ": Unable to set fan direction LR")
+				indigo.server.log(dev.name + ": Unable to set fan direction Left/Right")
 	def fanOnly(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]

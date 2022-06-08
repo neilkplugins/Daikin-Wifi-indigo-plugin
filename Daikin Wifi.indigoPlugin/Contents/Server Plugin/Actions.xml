@@ -80,7 +80,7 @@
 			<Label>Choose:</Label>
 			<List>
 				<Option value="0">No motion</Option>
-				<Option value="S">Up/Down</Option>
+				<Option value="S">Left/Right</Option>
 			</List>
 			</Field>
 		</ConfigUI>

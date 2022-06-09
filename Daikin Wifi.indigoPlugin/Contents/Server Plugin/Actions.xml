@@ -59,6 +59,24 @@
 			</Field>
 		</ConfigUI>
 		</Action>
+		<Action id="specialMode" uiPath="DeviceActions" deviceFilter="self">
+		<Name>Set Special Mode</Name>
+		<CallbackMethod>specialMode</CallbackMethod>
+		<ConfigUI>
+			<Field id="specialMode" type="menu" defaultValue="0">
+			<Label>Choose:</Label>
+			<List>
+				<Option value="0">Enable Streamer</Option>
+				<Option value="1">Disable Streamer</Option>
+				<Option value="2">Enable Powerful Mode</Option>
+				<Option value="3">Disable Powerful Mode</Option>
+				<Option value="4">Enable Econo Mode</Option>
+				<Option value="5">Disable Econo Mode</Option>
+
+			</List>
+			</Field>
+		</ConfigUI>
+		</Action>
 	<Action id="fanDirectionUD" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Set Fan Direction Alira - Up/Down</Name>
 		<CallbackMethod>fanDirectionUD</CallbackMethod>

@@ -217,6 +217,11 @@
 				<TriggerLabel>Numeric Mode Value</TriggerLabel>
 				<ControlPageLabel>Numeric Mode</ControlPageLabel>
 			</State>
+			<State id="special_mode">
+				<ValueType>String</ValueType>
+				<TriggerLabel>Special Mode Status</TriggerLabel>
+				<ControlPageLabel>Special Mode Status</ControlPageLabel>
+			</State>
 			<State id="today_cool_consump">
 				<ValueType>Number</ValueType>
 				<TriggerLabel>Energy Consumption Cooling - Today</TriggerLabel>

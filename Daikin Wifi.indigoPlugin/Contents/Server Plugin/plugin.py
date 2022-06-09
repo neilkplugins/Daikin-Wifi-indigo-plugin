@@ -278,6 +278,23 @@ class Plugin(indigo.PluginBase):
 			elif ac_data['f_dir_lr'] == "S":
 				ui_fan_dir_lr = "Left/Right"
 			state_updates.append({'key': "fan_direction_left_right", 'value': ac_data['f_dir_lr'], 'uiValue': ui_fan_dir_lr})
+		if 'adv' in ac_data:
+			if ac_data['adv']=='13':
+				ui_special_mode = "Streamer On"
+			if ac_data['adv']=='':
+				ui_special_mode="None"
+			if ac_data['adv']=='2/13':
+				ui_special_mode = "Streamer On & Powerful"
+			if ac_data['adv']=='2':
+				ui_special_mode = "Powerful"
+			if ac_data['adv']=='12':
+				ui_special_mode = "Econo"
+			if ac_data['adv']=='12/13':
+				ui_special_mode = "Streamer On & Econo"
+			state_updates.append(
+				{'key': "special_mode", 'value': ui_special_mode})
+
+
 
 		state_updates.append({'key': "fan_rate", 'value': ac_data['f_rate'], 'uiValue' : ui_fan_rate})
 		state_updates.append({'key': "outside_temp", 'value': ac_data['otemp'], 'uiValue' :  ac_data['otemp']+ stateSuffix})
@@ -726,6 +743,37 @@ class Plugin(indigo.PluginBase):
 			indigo.server.log(dev.name + ": set fan mode to " + new_direction)
 		else:
 			indigo.server.log(dev.name + ": Unable to set fan mode")
+	def specialMode(self, pluginAction, dev):
+		mode_action=pluginAction.props.get("specialMode")
+		try:
+			controller_ip = dev.pluginProps["address"]
+		except:
+			indigo.server.log("No Device specified - add to action config")
+			return
+		if mode_action == "0":
+			control_url = '/aircon/set_special_mode?en_streamer=1'
+			mode_type = "Streamer Enabled"
+		elif mode_action == "1":
+			control_url = '/aircon/set_special_mode?en_streamer=0'
+			mode_type = "Streamer Disabled"
+		elif mode_action == "2":
+			control_url = '/aircon/set_special_mode?set_spmode=1&spmode_kind=1'
+			mode_type = "Powerful Mode Enabled"
+		elif mode_action == "3":
+			control_url = '/aircon/set_special_mode?set_spmode=0&spmode_kind=1'
+			mode_type = "Powerful Mode Disabled"
+		elif mode_action == "4":
+			control_url = '/aircon/set_special_mode?set_spmode=1&spmode_kind=2'
+			mode_type = "Econo Mode Enabled"
+		elif mode_action == "5":
+			control_url = '/aircon/set_special_mode?set_spmode=0&spmode_kind=2'
+			mode_type = "Econo Mode Disabled"
+		self.debugLog(control_url)
+		if self.sendAPIrequest(dev, control_url):
+			indigo.server.log(dev.name + ": set special mode to " + mode_action + " "+ mode_type)
+		else:
+			indigo.server.log(dev.name + ": Unable to set special mode")
+
 	#Add actions for the Alira model that has seperate up/down and left/right states
 	def fanDirectionUD(self, pluginAction, dev):
 		new_direction=str(pluginAction.props.get("directionUD"))

@@ -500,6 +500,18 @@ class Plugin(indigo.PluginBase):
 	def deviceStartComm(self, dev):
 
 		dev.stateListOrDisplayStateIdChanged()
+		self.debugLog("Starting "+ dev.name)
+		# Check if device props need to be updated
+		try:
+			self.debugLog("Checking device props to upgrade "+ dev.name)
+			consumption_config = dev.pluginProps["consumptionSupport"]
+
+		except:
+			devprops = dev.pluginProps
+			devprops.update({'consumptionSupport': True, 'decimalSetPoint': True})
+			dev.replacePluginPropsOnServer(devprops)
+			self.debugLog("Upgraded device props " + dev.name)
+
 		self._refreshStatesFromHardware(dev, True, True)
 
 	def deviceStopComm(self, dev):

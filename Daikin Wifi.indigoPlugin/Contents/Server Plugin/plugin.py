@@ -71,8 +71,10 @@ class Plugin(indigo.PluginBase):
 			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
 			#response = requests.get(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
 		else:
-			headers={}
-			#response = requests.get(self.baseURL(dev) + api, timeout=1)
+			headers={"Host": controller_ip}
+			self.debugLog("Headers are : " + str(headers))
+
+		#response = requests.get(self.baseURL(dev) + api, timeout=1)
 		try:
 			response = requests.get(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
@@ -97,7 +99,8 @@ class Plugin(indigo.PluginBase):
 			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
 			#response = requests.post(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
 		else:
-			headers={}
+			headers={"Host": controller_ip}
+			self.debugLog("Headers are : "+str(headers))
 			#response = requests.post(self.baseURL(dev) + api, timeout=1)
 		self.debugLog(self.baseURL(dev) + api)
 		try:

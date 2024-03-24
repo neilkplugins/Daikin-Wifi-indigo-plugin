@@ -83,14 +83,6 @@
 				<Label>Does the unit require "HTTPS" support:</Label>
 				<Description>Configure HTTPS Support</Description>
 			</Field>
-			<Field type="checkbox" id="consumptionSupport" defaultValue="true" hidden="false">
-				<Label>Does the unit provide consumption data:</Label>
-				<Description>Depending on controller or version, uncheck if you get errors</Description>
-			</Field>
-			<Field type="checkbox" id="decimalSetPoint" defaultValue="true" hidden="false">
-				<Label>Does the unit support decimal set points:</Label>
-				<Description>Depending on controller, uncheck if setpoints fail to apply</Description>
-			</Field>
 			<Field type="textfield" id="uuid" defaultValue="" visibleBindingId="requireHTTPS" visibleBindingValue="true">
 				<Label>Enter your registered uuid:</Label>
 			</Field>
@@ -210,25 +202,10 @@
 				<TriggerLabel>Fan Direction</TriggerLabel>
 				<ControlPageLabel>Fan Direction</ControlPageLabel>
 			</State>
-			<State id="fan_direction_up_down">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Fan Direction - Up Down</TriggerLabel>
-				<ControlPageLabel>Fan Direction - Up Down</ControlPageLabel>
-			</State>
-			<State id="fan_direction_left_right">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Fan Direction - Left Right</TriggerLabel>
-				<ControlPageLabel>Fan Direction - Left Right</ControlPageLabel>
-			</State>
 			<State id="mode">
 				<ValueType>String</ValueType>
 				<TriggerLabel>Numeric Mode Value</TriggerLabel>
 				<ControlPageLabel>Numeric Mode</ControlPageLabel>
-			</State>
-			<State id="special_mode">
-				<ValueType>String</ValueType>
-				<TriggerLabel>Special Mode Status</TriggerLabel>
-				<ControlPageLabel>Special Mode Status</ControlPageLabel>
 			</State>
 			<State id="today_cool_consump">
 				<ValueType>Number</ValueType>

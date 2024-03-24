@@ -10,6 +10,7 @@ import os
 import sys
 import random
 import requests
+import logging
 
 # Note the "indigo" module is automatically imported and made available inside
 # our global name space by the host process.
@@ -41,7 +42,8 @@ class Plugin(indigo.PluginBase):
 	########################################
 	def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
 		indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
-		self.debug = pluginPrefs.get("showDebugInfo", False)
+		#self.debug = pluginPrefs.get("showDebugInfo", False)
+		self.debugLevel = int(self.pluginPrefs.get('loglevel', "30"))
 
 	def __del__(self):
 		indigo.PluginBase.__del__(self)
@@ -71,21 +73,19 @@ class Plugin(indigo.PluginBase):
 			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
 			#response = requests.get(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
 		else:
-			headers={"Host": controller_ip}
-			self.debugLog("Headers are : " + str(headers))
-
-		#response = requests.get(self.baseURL(dev) + api, timeout=1)
+			headers={}
+			#response = requests.get(self.baseURL(dev) + api, timeout=1)
 		try:
 			response = requests.get(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
 		except requests.exceptions.HTTPError as err:
-			indigo.server.log("HTTP Error getting "+api+" from Daikin Unit "+dev.name)
-			self.debugLog("Error is " + str(err))
+			self.logger.error("HTTP Error getting "+api+" from Daikin Unit "+dev.name)
+			self.logger.debug("Error is " + str(err))
 			return "FAILED"
 
 		except Exception as err:
-			indigo.server.log("Unknown/Other Error getting "+api+" from Daikin Unit "+dev.name)
-			self.debugLog("Error is " + str(err))
+			self.logger.warn("Unknown/Other Error getting "+api+" from Daikin Unit "+dev.name)
+			self.logger.debug("Error is " + str(err))
 			return "FAILED"
 		return response.text
 	#
@@ -99,25 +99,24 @@ class Plugin(indigo.PluginBase):
 			headers={"X-Daikin-uuid": dev.pluginProps["uuid"]}
 			#response = requests.post(self.baseURL(dev) + api,headers=headers,ssl=False, timeout=1)
 		else:
-			headers={"Host": controller_ip}
-			self.debugLog("Headers are : "+str(headers))
+			headers={}
 			#response = requests.post(self.baseURL(dev) + api, timeout=1)
-		self.debugLog(self.baseURL(dev) + api)
+		self.logger.debug(self.baseURL(dev) + api)
 		try:
 			response = requests.post(self.baseURL(dev) + api, headers=headers, timeout=timeout)
 			response.raise_for_status()
 		except requests.exceptions.HTTPError as err:
-			indigo.server.log("HTTP Error posting "+api+" from Daikin Unit "+dev.name, isError=True)
-			self.debugLog("Error is " + str(err))
+			self.logger.error("HTTP Error posting "+api+" from Daikin Unit "+dev.name)
+			self.logger.debug("Error is " + str(err))
 			return False
 
 		except Exception as err:
-			indigo.server.log("Unknown/Other Error setting "+api+" from Daikin Unit "+dev.name, isError=True)
-			self.debugLog("Error is " + str(err))
+			self.logger.warn("Unknown/Other Error setting "+api+" from Daikin Unit "+dev.name)
+			self.logger.debug("Error is " + str(err))
 			return False
-		self.debugLog(response.text)
+		self.logger.debug(response.text)
 		if response.text=="ret=PARAM NG":
-			indigo.server.log("Request to update was processed but not successful " + api + " from Daikin Unit " + dev.name, isError=True)
+			self.logger.warn("Request to update was processed but not successful " + api + " from Daikin Unit " + dev.name)
 			return False
 
 		return True
@@ -146,7 +145,7 @@ class Plugin(indigo.PluginBase):
 		# get control response data
 		control_response=self.makeAPIrequest(dev,'/aircon/get_control_info')
 		if control_response=="FAILED":
-			indigo.server.log("Failed to update control info "+dev.name+" aborting state refresh", isError=True)
+			self.logger.warn("Failed to update control info "+dev.name+" aborting state refresh")
 			return
 		split_control = control_response.split(',')
 		returned_list = []
@@ -155,40 +154,38 @@ class Plugin(indigo.PluginBase):
 		#get sensor response data
 		sensor_response = self.makeAPIrequest(dev, '/aircon/get_sensor_info')
 		if sensor_response=="FAILED":
-			indigo.server.log("Failed to update sensor "+dev.name+" aborting state refresh", isError=True)
+			self.logger.warn("Failed to update sensor "+dev.name+" aborting state refresh")
 			return
 		split_sensor = sensor_response.split(',')
 		for element in split_sensor:
 			returned_list.append(element.split('='))
-
-		if dev.pluginProps["consumptionSupport"]:
-			day_consump=self.makeAPIrequest(dev,'/aircon/get_day_power_ex')
-			if day_consump=="FAILED":
-				indigo.server.log("Failed to update consumption "+dev.name+" aborting state refresh", isError=True)
-				return
-			split_day_consump=day_consump.split(',')
-			for element in split_day_consump:
-				returned_list.append(element.split('='))
-
-			week_consump = self.makeAPIrequest(dev, '/aircon/get_week_power_ex')
-			if week_consump == "FAILED":
-				indigo.server.log("Failed to update consumption " + dev.name + " aborting state refresh", isError=True)
-				return
-			split_week_consump = week_consump.split(',')
-			for element in split_week_consump:
-				returned_list.append(element.split('='))
-			year_consump = self.makeAPIrequest(dev, '/aircon/get_year_power_ex')
-			if year_consump == "FAILED":
-				indigo.server.log("Failed to update consumption " + dev.name + " aborting state refresh", isError=True)
-				return
-			split_year_consump = year_consump.split(',')
-			for element in split_year_consump:
-				returned_list.append(element.split('='))
-		else:
-			self.debugLog("Consumption data not supported - as per device config "+dev.name)
+		self.logger.debug(str(returned_list))
 
 
-		self.debugLog(str(returned_list))
+		day_consump=self.makeAPIrequest(dev,'/aircon/get_day_power_ex')
+		if day_consump=="FAILED":
+			self.logger.warn("Failed to update consumption "+dev.name+" aborting state refresh")
+			return
+		split_day_consump=day_consump.split(',')
+		for element in split_day_consump:
+			returned_list.append(element.split('='))
+
+		week_consump = self.makeAPIrequest(dev, '/aircon/get_week_power_ex')
+		if week_consump == "FAILED":
+			self.logger.warn("Failed to update consumption " + dev.name + " aborting state refresh")
+			return
+		split_week_consump = week_consump.split(',')
+		for element in split_week_consump:
+			returned_list.append(element.split('='))
+		year_consump = self.makeAPIrequest(dev, '/aircon/get_year_power_ex')
+		if year_consump == "FAILED":
+			self.logger.warn("Failed to update consumption " + dev.name + " aborting state refresh")
+			return
+		split_year_consump = year_consump.split(',')
+		for element in split_year_consump:
+			returned_list.append(element.split('='))
+
+		self.logger.debug(str(returned_list))
 		returned_dict = {}
 		for element in returned_list:
 			returned_dict[element[0]] = element[1]
@@ -202,7 +199,7 @@ class Plugin(indigo.PluginBase):
 		ac_data = self.requestData (dev, "getCurrentState")
 
 		if type(ac_data) != dict:
-			self.debugLog("Empty data aborting state updates")
+			self.logger.warn("Empty data aborting state updates")
 			return
 
 		if dev.pluginProps["measurement"] == "C":
@@ -234,7 +231,7 @@ class Plugin(indigo.PluginBase):
 			total_consump=year_heat_consump+year_cool_consump+self.calculate_consumption(ac_data['prev_year_cool'])+self.calculate_consumption(ac_data['prev_year_heat'])
 			state_updates.append({'key': "accumEnergyTotal", 'value': total_consump, 'uiValue' : str(total_consump) + " kWh"})
 		except:
-			self.debugLog("Consumption data not returned and skipped consumption state updates for "+dev.name)
+			self.logger.warn("Consumption data not returned and skipped consumption state updates for "+dev.name)
 
 		# Update control and sensor info
 
@@ -258,50 +255,20 @@ class Plugin(indigo.PluginBase):
 			ui_fan_rate='Auto'
 		elif ac_data['f_rate']=='B':
 			ui_fan_rate='Silence'
-		if 'f_dir' in ac_data:
-			ui_fan_dir=ac_data['f_dir']
-			if ac_data['f_dir']=="0":
-				ui_fan_dir="Stopped"
-			elif ac_data['f_dir']=="1":
-				ui_fan_dir="Vertical Motion"
-			elif ac_data['f_dir'] == "2":
-				ui_fan_dir = "Horizontal Motion"
-			elif ac_data['f_dir'] == "3":
-				ui_fan_dir = "Horizontal and Vertical Motion"
-			state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir'],'uiValue' : ui_fan_dir })
-		if 'f_dir_ud' in ac_data:
-			ui_fan_dir_ud = ac_data['f_dir_ud']
-			if ac_data['f_dir_ud'] == "0":
-				ui_fan_dir_ud = "Stopped"
-			elif ac_data['f_dir_ud'] == "S":
-				ui_fan_dir_ud = "Up/Down"
-			state_updates.append({'key': "fan_direction_up_down", 'value': ac_data['f_dir_ud'], 'uiValue': ui_fan_dir_ud})
-		if 'f_dir_lr' in ac_data:
-			ui_fan_dir_lr = ac_data['f_dir_ud']
-			if ac_data['f_dir_lr'] == "0":
-				ui_fan_dir_lr = "Stopped"
-			elif ac_data['f_dir_lr'] == "S":
-				ui_fan_dir_lr = "Left/Right"
-			state_updates.append({'key': "fan_direction_left_right", 'value': ac_data['f_dir_lr'], 'uiValue': ui_fan_dir_lr})
-		if 'adv' in ac_data:
-			if ac_data['adv']=='13':
-				ui_special_mode = "Streamer On"
-			if ac_data['adv']=='':
-				ui_special_mode="None"
-			if ac_data['adv']=='2/13':
-				ui_special_mode = "Streamer On & Powerful"
-			if ac_data['adv']=='2':
-				ui_special_mode = "Powerful"
-			if ac_data['adv']=='12':
-				ui_special_mode = "Econo"
-			if ac_data['adv']=='12/13':
-				ui_special_mode = "Streamer On & Econo"
-			state_updates.append(
-				{'key': "special_mode", 'value': ui_special_mode})
+		ui_fan_dir=ac_data['f_dir']
+		if ac_data['f_dir']=="0":
+			ui_fan_dir="Stopped"
+		elif ac_data['f_dir']=="1":
+			ui_fan_dir="Vertical Motion"
+		elif ac_data['f_dir'] == "2":
+			ui_fan_dir = "Horizontal Motion"
+		elif ac_data['f_dir'] == "3":
+			ui_fan_dir = "Horizontal and Vertical Motion"
 
 
 
 		state_updates.append({'key': "fan_rate", 'value': ac_data['f_rate'], 'uiValue' : ui_fan_rate})
+		state_updates.append({'key': "fan_direction", 'value': ac_data['f_dir'],'uiValue' : ui_fan_dir })
 		state_updates.append({'key': "outside_temp", 'value': ac_data['otemp'], 'uiValue' :  ac_data['otemp']+ stateSuffix})
 
 		if ac_data['mode']=='2':
@@ -363,7 +330,7 @@ class Plugin(indigo.PluginBase):
 
 		#
 		if (ac_data['stemp'] == '--' or ac_data['stemp'] == 'M'):
-			self.debugLog("No setpoint in fan or dry mode")
+			self.logger.debug("No setpoint in fan or dry mode")
 
 
 		dev.updateStatesOnServer(state_updates)
@@ -375,31 +342,31 @@ class Plugin(indigo.PluginBase):
 	def _handleChangeHvacModeAction(self, dev, newHvacMode):
 		# Command hardware module (dev) to change the thermostat mode here:
 		# ** IMPLEMENT ME **
-		indigo.server.log(str(newHvacMode))
+		self.logger.info(str(newHvacMode))
 		actionStr = _lookupActionStrFromHvacMode(newHvacMode)
-		indigo.server.log(actionStr)
+		self.logger.info(actionStr)
 
 		# take a copy of the current states for overall power and mode
 		pow = dev.states['unit_power']
 		mode = dev.states['mode']
-		setpoint=float(dev.states['setpoint_temp'])
-		self.debugLog("action string is "+actionStr)
+		setpoint=str(dev.states['setpoint_temp'])
+		self.logger.info("action string is "+actionStr)
 		if 'heat' in actionStr:
 			#implement set mode function
 			mode="4"
 			pow=1
-			setpoint=float(dev.states['setpointHeat'])
+			setpoint=str(dev.states['setpointHeat'])
 		if 'cool' in actionStr:
 			#implement set mode function
 			mode="3"
 			pow=1
-			setpoint=float(dev.states['setpointCool'])
+			setpoint=str(dev.states['setpointCool'])
 
 		if 'auto' in actionStr:
 			#implement set mode function
 			mode="0"
 			pow=1
-			setpoint=float(dev.states['auto_setpoint'])
+			setpoint=str(dev.states['auto_setpoint'])
 			dev.updateStateImageOnServer(indigo.kStateImageSel.HvacAutoMode)
 
 
@@ -407,20 +374,18 @@ class Plugin(indigo.PluginBase):
 			#implement set mode function
 			pow=0
 
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		api_url='/aircon/set_control_info?pow='+str(pow)+'&mode='+mode+'&stemp='+str(setpoint)+'&shum=0&f_rate='+str(dev.states['fan_rate'])+'&f_dir='+str(dev.states['fan_direction'])
+		api_url='/aircon/set_control_info?pow='+str(pow)+'&mode='+mode+'&stemp='+setpoint+'&shum=0&f_rate='+str(dev.states['fan_rate'])+'&f_dir='+str(dev.states['fan_direction'])
 		if self.sendAPIrequest(dev,api_url):
 
 			# If success then log that the command was successfully sent.
-			indigo.server.log(u"sent \"%s\" mode change to %s" % (dev.name, actionStr))
+			self.logger.info("sent \"%s\" mode change to %s" % (dev.name, actionStr))
 
 			# And then tell the Indigo Server to update the state.
 			if "hvacOperationMode" in dev.states:
 				dev.updateStateOnServer("hvacOperationMode", newHvacMode)
 		else:
 			# Else log failure but do NOT update state on Indigo Server.
-			indigo.server.log(u"send \"%s\" mode change to %s failed" % (dev.name, actionStr), isError=True)
+			self.logger.warn(u"send \"%s\" mode change to %s failed" % (dev.name, actionStr))
 
 
 
@@ -443,10 +408,8 @@ class Plugin(indigo.PluginBase):
 			pow='1'
 		else:
 			pow='0'
-		if not dev.pluginProps["decimalSetPoint"]:
-			newSetpoint = int(newSetpoint)
 		control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + dev.states['mode'] + '&stemp=' + str(newSetpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
-		self.debugLog(control_url)
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
 			sendSuccess = True
 		else:
@@ -454,7 +417,7 @@ class Plugin(indigo.PluginBase):
 
 		if sendSuccess:
 			# If success then log that the command was successfully sent.
-			indigo.server.log("Sent "+dev.name+" "+logActionName+" to "+str(newSetpoint))
+			self.logger.info("sent \"%s\" %s to %.1f°" % (dev.name, logActionName, newSetpoint))
 
 			# And then tell the Indigo Server to update the state.
 			if stateKey in dev.states:
@@ -465,18 +428,18 @@ class Plugin(indigo.PluginBase):
 				dev.updateStateOnServer(stateKey, newSetpoint, uiValue=str(newSetpoint)+stateSuffix)
 		else:
 			# Else log failure but do NOT update state on Indigo Server.
-			indigo.server.log(u"send \"%s\" %s to %.1f° failed" % (dev.name, logActionName, newSetpoint), isError=True)
+			self.logger.error(u"send \"%s\" %s to %.1f° failed" % (dev.name, logActionName, newSetpoint))
 
 	########################################
 	def startup(self):
-		self.debugLog(u"startup called")
+		self.logger.debug(u"startup called")
 
 	def shutdown(self):
-		self.debugLog(u"shutdown called")
+		self.logger.debug(u"shutdown called")
 
 	########################################
 	def runConcurrentThread(self):
-		self.debugLog("Starting concurrent thread")
+		self.logger.debug("Starting concurrent thread")
 		try:
 			pollingFreq = int(self.pluginPrefs['pollingFrequency'])
 		except:
@@ -503,18 +466,6 @@ class Plugin(indigo.PluginBase):
 	def deviceStartComm(self, dev):
 
 		dev.stateListOrDisplayStateIdChanged()
-		self.debugLog("Starting "+ dev.name)
-		# Check if device props need to be updated
-		try:
-			self.debugLog("Checking device props to upgrade "+ dev.name)
-			consumption_config = dev.pluginProps["consumptionSupport"]
-
-		except:
-			devprops = dev.pluginProps
-			devprops.update({'consumptionSupport': True, 'decimalSetPoint': True})
-			dev.replacePluginPropsOnServer(devprops)
-			self.debugLog("Upgraded device props " + dev.name)
-
 		self._refreshStatesFromHardware(dev, True, True)
 
 	def deviceStopComm(self, dev):
@@ -526,7 +477,7 @@ class Plugin(indigo.PluginBase):
 	######################
 	# Main thermostat action bottleneck called by Indigo Server.
 	def actionControlThermostat(self, action, dev):
-		indigo.server.log(str(action))
+		self.logger.debug(str(action))
 		###### SET HVAC MODE ######
 		if action.thermostatAction == indigo.kThermostatAction.SetHvacMode:
 			self._handleChangeHvacModeAction(dev, action.actionMode)
@@ -577,19 +528,19 @@ class Plugin(indigo.PluginBase):
 		if action.deviceAction == indigo.kDeviceGeneralAction.Beep:
 			# Beep the hardware module (dev) here:
 			# ** IMPLEMENT ME **
-			indigo.server.log(u"sent \"%s\" %s" % (dev.name, "beep request"))
+			self.logger.info("sent \"%s\" %s" % (dev.name, "beep request"))
 
 		###### ENERGY UPDATE ######
 		elif action.deviceAction == indigo.kDeviceGeneralAction.EnergyUpdate:
 			# Request hardware module (dev) for its most recent meter data here:
 			# ** IMPLEMENT ME **
-			indigo.server.log(u"sent \"%s\" %s" % (dev.name, "energy update request not supported"))
+			self.logger.info("sent \"%s\" %s" % (dev.name, "energy update request not supported"))
 
 		###### ENERGY RESET ######
 		elif action.deviceAction == indigo.kDeviceGeneralAction.EnergyReset:
 			# Request that the hardware module (dev) reset its accumulative energy usage data here:
 			# ** IMPLEMENT ME **
-			indigo.server.log(u"sent \"%s\" %s" % (dev.name, "energy reset request not supported"))
+			self.logger.info("sent \"%s\" %s" % (dev.name, "energy reset request not supported"))
 
 		###### STATUS REQUEST ######
 		elif action.deviceAction == indigo.kDeviceGeneralAction.RequestStatus:
@@ -602,7 +553,7 @@ class Plugin(indigo.PluginBase):
 			# ** GET BATTERY INFO **
 			# and call the common function to update the thermo-specific data
 			self._refreshStatesFromHardware(dev, True, False)
-			indigo.server.log(u"sent \"%s\" %s" % (dev.name, "status request"))
+			self.logger.info("sent \"%s\" %s" % (dev.name, "status request"))
 
 
 	def setAutoSetpoint(self,pluginAction,dev):
@@ -618,20 +569,15 @@ class Plugin(indigo.PluginBase):
 				pow='1'
 			else:
 				pow='0'
-			if dev.pluginProps["decimalSetPoint"]:
-				setpoint = float(pluginAction.props.get('setpoint'))
-			else:
-				setpoint = int(pluginAction.props.get('setpoint'))
 
-			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + str(setpoint) + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
-			self.debugLog(api_url+" for "+dev.name)
+			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + pluginAction.props.get('setpoint') + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
 			if self.sendAPIrequest(dev, api_url):
 				# If success then log that the command was successfully sent.
-				indigo.server.log(u"Updated Auto Setpoint to "+ str(setpoint)+ " for "+dev.name)
+				self.logger.info("Updated Auto Setpoint to "+ pluginAction.props.get('setpoint')+ " for "+dev.name)
 
 			else:
 				# Else log failure but do NOT update state on Indigo Server.
-				indigo.server.log(u"send setpoint change to "+pluginAction.props.get('setpoint')+" for "+dev.name)
+				self.indigo.logger("send setpoint change to "+pluginAction.props.get('setpoint')+" for "+dev.name)
 
 	def increaseAutoSetpoint(self, pluginAction, dev):
 		if dev.pluginProps["measurement"] == "C":
@@ -651,7 +597,7 @@ class Plugin(indigo.PluginBase):
 			elif newsetpoint > 86.0:
 				newsetpoint = 86.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
 
-		indigo.server.log("New Auto Setpoint is "+str(newsetpoint))
+		self.logger.info("New Auto Setpoint is "+str(newsetpoint))
 		dev.updateStateOnServer('auto_setpoint', newsetpoint,uiValue=str(newsetpoint) + stateSuffix)
 		# and if in auto mode also apply that to stemp to change the current setpoint
 		if dev.states['operationMode'] == "Auto":
@@ -659,18 +605,16 @@ class Plugin(indigo.PluginBase):
 				pow = '1'
 			else:
 				pow = '0'
-			if not dev.pluginProps["decimalSetPoint"]:
-				newsetpoint = int(newsetpoint)
+
 			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + str(newsetpoint) + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(
 				dev.states['fan_direction'])
 			if self.sendAPIrequest(dev, api_url):
 				# If success then log that the command was successfully sent.
-				indigo.server.log(
-					u"Updated Auto Setpoint to " + str(newsetpoint) + " for " + dev.name)
+				self.logger.info("Updated Auto Setpoint to " + str(newsetpoint) + " for " + dev.name)
 
 			else:
 				# Else log failure but do NOT update state on Indigo Server.
-				indigo.server.log(u"send setpoint change to " + str(newsetpoint) + " for " + dev.name)
+				self.logger.warn("send setpoint change to " + str(newsetpoint) + " for " + dev.name)
 
 	def decreaseAutoSetpoint(self, pluginAction, dev):
 		if dev.pluginProps["measurement"] == "C":
@@ -690,7 +634,7 @@ class Plugin(indigo.PluginBase):
 			elif newsetpoint > 86.0:
 				newsetpoint = 86.0		# Arbitrary -- set to whatever hardware maximum setpoint value is.
 
-		indigo.server.log("New Auto Setpoint is "+str(newsetpoint))
+		self.logger.info("New Auto Setpoint is "+str(newsetpoint))
 		dev.updateStateOnServer('auto_setpoint', newsetpoint,uiValue=str(newsetpoint) + stateSuffix)
 		# and if in auto mode also apply that to stemp to change the current setpoint
 		if dev.states['operationMode'] == "Auto":
@@ -698,207 +642,112 @@ class Plugin(indigo.PluginBase):
 				pow = '1'
 			else:
 				pow = '0'
-			if not dev.pluginProps["decimalSetPoint"]:
-				newsetpoint = int(newsetpoint)
+
 			api_url = '/aircon/set_control_info?pow=' + str(pow) + '&mode=' + "0" + '&stemp=' + str(newsetpoint) + '&shum=0&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(
 				dev.states['fan_direction'])
 			if self.sendAPIrequest(dev, api_url):
 				# If success then log that the command was successfully sent.
-				indigo.server.log(u"Updated Auto Setpoint to " + str(newsetpoint) + " for " + dev.name)
+				self.logger.info("Updated Auto Setpoint to " + str(newsetpoint) + " for " + dev.name)
 
 			else:
 				# Else log failure but do NOT update state on Indigo Server.
-				indigo.server.log(u"send setpoint change to " + str(newsetpoint) + " for " + dev.name)
+				self.logger.warn("send setpoint change to " + str(newsetpoint) + " for " + dev.name)
 
 	def powerOff(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]
 		except:
-			indigo.server.log("No Device specified - add to action config")
+			self.logger.info("No Device specified - add to action config")
 			return
-		setpoint= float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-
-		control_url = '/aircon/set_control_info?pow=0&mode=' + dev.states['mode'] + '&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
-		self.debugLog(control_url)
+		control_url = '/aircon/set_control_info?pow=0&mode=' + dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": switched off")
+			self.logger.info(dev.name + ": switched off")
 		else:
-			indigo.server.log(dev.name + ": Unable to switch Daikin unit off, check IP Address")
+			self.logger.warn(dev.name + ": Unable to switch Daikin unit off, check IP Address")
 
 	def powerOn(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]
 		except:
-			indigo.server.log("No Device specified - add to action config")
+			self.logger.error("No Device specified - add to action config")
 			return
-		setpoint = float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		control_url = '/aircon/set_control_info?pow=1&mode=' + dev.states['mode'] + '&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
-		self.debugLog(control_url)
+		control_url = '/aircon/set_control_info?pow=1&mode=' + dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": switched on")
+			self.logger.info(dev.name + ": switched on")
 		else:
-			indigo.server.log(dev.name + ": Unable to switch Daikin unit on, check IP Address")
+			self.logger.error(dev.name + ": Unable to switch Daikin unit on, check IP Address")
 
 	def fanSpeed(self, pluginAction, dev):
 		new_speed=pluginAction.props.get("speed")
 		try:
 			controller_ip = dev.pluginProps["address"]
 		except:
-			indigo.server.log("No Device specified - add to action config")
+			self.logger.error("No Device specified - add to action config")
 			return
 		if dev.states['unit_power']=="on":
 			pow='1'
 		else:
 			pow='0'
-		setpoint = float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + dev.states['mode'] + '&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + new_speed + '&f_dir=' + str(dev.states['fan_direction'])
-		self.debugLog(control_url)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' + dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + new_speed + '&f_dir=' + str(dev.states['fan_direction'])
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set fan speed to "+new_speed)
+			self.logger.info(dev.name + ": set fan speed to "+new_speed)
 		else:
-			indigo.server.log(dev.name + ": Unable to set fan speed")
+			self.logger.error(dev.name + ": Unable to set fan speed")
 
 	def fanDirection(self, pluginAction, dev):
 		new_direction=pluginAction.props.get("direction")
 		try:
 			controller_ip = dev.pluginProps["address"]
 		except:
-			indigo.server.log("No Device specified - add to action config")
+			self.logger.error("No Device specified - add to action config")
 			return
 		if dev.states['unit_power']=="on":
 			pow='1'
 		else:
 			pow='0'
-		setpoint = float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' +dev.states['mode'] + '&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
-		self.debugLog(control_url)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' +dev.states['mode'] + '&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir=' + new_direction)
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set fan mode to " + new_direction)
+			self.logger.info(dev.name + ": set fan mode to " + new_direction)
 		else:
-			indigo.server.log(dev.name + ": Unable to set fan mode")
-	def specialMode(self, pluginAction, dev):
-		mode_action=pluginAction.props.get("specialMode")
-		try:
-			controller_ip = dev.pluginProps["address"]
-		except:
-			indigo.server.log("No Device specified - add to action config")
-			return
-		if mode_action == "0":
-			control_url = '/aircon/set_special_mode?en_streamer=1'
-			mode_type = "Streamer Enabled"
-		elif mode_action == "1":
-			control_url = '/aircon/set_special_mode?en_streamer=0'
-			mode_type = "Streamer Disabled"
-		elif mode_action == "2":
-			control_url = '/aircon/set_special_mode?set_spmode=1&spmode_kind=1'
-			mode_type = "Powerful Mode Enabled"
-		elif mode_action == "3":
-			control_url = '/aircon/set_special_mode?set_spmode=0&spmode_kind=1'
-			mode_type = "Powerful Mode Disabled"
-		elif mode_action == "4":
-			control_url = '/aircon/set_special_mode?set_spmode=1&spmode_kind=2'
-			mode_type = "Econo Mode Enabled"
-		elif mode_action == "5":
-			control_url = '/aircon/set_special_mode?set_spmode=0&spmode_kind=2'
-			mode_type = "Econo Mode Disabled"
-		self.debugLog(control_url)
-		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set special mode to " + mode_action + " "+ mode_type)
-		else:
-			indigo.server.log(dev.name + ": Unable to set special mode")
+			self.logger.error(dev.name + ": Unable to set fan mode")
 
-	#Add actions for the Alira model that has seperate up/down and left/right states
-	def fanDirectionUD(self, pluginAction, dev):
-		new_direction=str(pluginAction.props.get("directionUD"))
-		try:
-			controller_ip = dev.pluginProps["address"]
-		except:
-			indigo.server.log("No Device specified - add to action config")
-			return
-		if dev.states['unit_power']=="on":
-			pow='1'
-		else:
-			pow='0'
-		self.debugLog("Fan direction is "+new_direction)
-		setpoint = float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=' +dev.states['mode'] + '&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']+ '&f_dir_ud=' + new_direction)
-		self.debugLog(control_url)
-		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set fan Direction Up/Down to " + new_direction+" (S is enabled, 0 is disabled)")
-		else:
-			indigo.server.log(dev.name + ": Unable to set fan Direction Up/Down")
-
-	def fanDirectionLR(self, pluginAction, dev):
-			new_direction = str(pluginAction.props.get("directionLR"))
-			try:
-				controller_ip = dev.pluginProps["address"]
-			except:
-				indigo.server.log("No Device specified - add to action config")
-				return
-			if dev.states['unit_power'] == "on":
-				pow = '1'
-			else:
-				pow = '0'
-			setpoint = float(dev.states['setpoint_temp'])
-			if not dev.pluginProps["decimalSetPoint"]:
-				setpoint = int(setpoint)
-			control_url = '/aircon/set_control_info?pow=' + pow + '&mode=' + dev.states['mode'] + '&stemp=' + str(
-				setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(
-				dev.states['fan_rate'] + '&f_dir_lr=' + new_direction)
-			self.debugLog(control_url)
-			if self.sendAPIrequest(dev, control_url):
-				indigo.server.log(dev.name + ": Set fan direction Left/Right to " + new_direction+" (S is enabled, 0 is disabled)")
-			else:
-				indigo.server.log(dev.name + ": Unable to set fan direction Left/Right")
 	def fanOnly(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]
 		except:
-			indigo.server.log("No Device specified - add to action config")
+			self.logger.error("No Device specified - add to action config")
 			return
 		if dev.states['unit_power']=="on":
 			pow='1'
 		else:
 			pow='0'
-		setpoint = float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=6&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
-		self.debugLog(control_url)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=6&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set to fan only mode to ")
+			self.logger.info(dev.name + ": set to fan only mode to ")
 		else:
-			indigo.server.log(dev.name + ": Unable to set fan only mode")
+			self.logger.error(dev.name + ": Unable to set fan only mode")
 
 	def deHum(self, pluginAction, dev):
 		try:
 			controller_ip = dev.pluginProps["address"]
 		except:
-			indigo.server.log("No Device specified - add to action config")
+			self.logger.error("No Device specified - add to action config")
 			return
 		if dev.states['unit_power']=="on":
 			pow='1'
 		else:
 			pow='0'
-		setpoint = float(dev.states['setpoint_temp'])
-		if not dev.pluginProps["decimalSetPoint"]:
-			setpoint = int(setpoint)
-		control_url = '/aircon/set_control_info?pow='+pow+'&mode=2&stemp=' + str(setpoint) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
-		self.debugLog(control_url)
+		control_url = '/aircon/set_control_info?pow='+pow+'&mode=2&stemp=' + str(dev.states['setpoint_temp']) + '&shum=' + str(dev.states['setpoint_humidity']) + '&f_rate=' + str(dev.states['fan_rate']) + '&f_dir=' + str(dev.states['fan_direction'])
+		self.logger.info(control_url)
 		if self.sendAPIrequest(dev, control_url):
-			indigo.server.log(dev.name + ": set dry mode to ")
+			self.logger.info(dev.name + ": set dry mode to ")
 		else:
-			indigo.server.log(dev.name + ": Unable to set dry mode")
+			self.logger.error(dev.name + ": Unable to set dry mode")
 
 
 #### Device Configuration validation
@@ -906,15 +755,15 @@ class Plugin(indigo.PluginBase):
 	def validateDeviceConfigUi(self, valuesDict, dev_type, dev):
 		try:
 			control_url = 'http://' + valuesDict['address'] + '/common/basic_info'
-			self.debugLog(control_url)
+			self.logger.info(control_url)
 			response = requests.get(control_url, timeout=3)
 			if response.status_code != 200:
-				self.debugLog("Failed to retrieve " + control_url + " for " + dev.name, isError=True)
+				self.logger.error("Failed to retrieve " + control_url + " for " + dev.name, isError=True)
 				raise Exception("No connection")
 
 
 		except:
-			indigo.server.log("Unknown error connecting to Daikin Unit at "+valuesDict['address'],isError=True)
+			self.logger.error("Unknown error connecting to Daikin Unit at "+valuesDict['address'],isError=True)
 			errorsDict = indigo.Dict()
 			errorsDict['address'] = "Failed to Connection to AC Unit - Check IP Address and if HTPPS required"
 			return (False, valuesDict, errorsDict)
@@ -924,11 +773,3 @@ class Plugin(indigo.PluginBase):
 	########################################
 	# Menu Methods
 	########################################
-	def toggleDebugging(self):
-		if self.debug:
-			indigo.server.log("Turning off debug logging")
-			self.pluginPrefs["showDebugInfo"] = False
-		else:
-			indigo.server.log("Turning on debug logging")
-			self.pluginPrefs["showDebugInfo"] = True
-		self.debug = not self.debug

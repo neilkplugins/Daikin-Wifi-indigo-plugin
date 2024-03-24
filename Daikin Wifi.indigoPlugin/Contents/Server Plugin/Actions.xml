@@ -42,7 +42,6 @@
 			</List>
 			</Field>
 		</ConfigUI>
-
 	</Action>
 		<Action id="fanDirection" uiPath="DeviceActions" deviceFilter="self">
 		<Name>Set Fan Direction</Name>
@@ -55,50 +54,6 @@
 				<Option value="1">Vertical Motion</Option>
 				<Option value="2">Horizontal Motion</Option>
 				<Option value="3">Horizontal and Vertical Motion</Option>
-			</List>
-			</Field>
-		</ConfigUI>
-		</Action>
-		<Action id="specialMode" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Set Special Mode</Name>
-		<CallbackMethod>specialMode</CallbackMethod>
-		<ConfigUI>
-			<Field id="specialMode" type="menu" defaultValue="0">
-			<Label>Choose:</Label>
-			<List>
-				<Option value="0">Enable Streamer</Option>
-				<Option value="1">Disable Streamer</Option>
-				<Option value="2">Enable Powerful Mode</Option>
-				<Option value="3">Disable Powerful Mode</Option>
-				<Option value="4">Enable Econo Mode</Option>
-				<Option value="5">Disable Econo Mode</Option>
-
-			</List>
-			</Field>
-		</ConfigUI>
-		</Action>
-	<Action id="fanDirectionUD" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Set Fan Direction Alira - Up/Down</Name>
-		<CallbackMethod>fanDirectionUD</CallbackMethod>
-		<ConfigUI>
-			<Field id="directionUD" type="menu" defaultValue="0">
-			<Label>Choose:</Label>
-			<List>
-				<Option value="0">No motion</Option>
-				<Option value="S">Up/Down</Option>
-			</List>
-			</Field>
-		</ConfigUI>
-	</Action>
-	<Action id="fanDirectionLR" uiPath="DeviceActions" deviceFilter="self">
-		<Name>Set Fan Direction Alira - Left/Right</Name>
-		<CallbackMethod>fanDirectionLR</CallbackMethod>
-		<ConfigUI>
-			<Field id="directionLR" type="menu" defaultValue="0">
-			<Label>Choose:</Label>
-			<List>
-				<Option value="0">No motion</Option>
-				<Option value="S">Left/Right</Option>
 			</List>
 			</Field>
 		</ConfigUI>

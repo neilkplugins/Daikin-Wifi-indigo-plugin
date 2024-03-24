@@ -32,10 +32,10 @@ kFanModeEnumToStrMap = {
 }
 
 def _lookupActionStrFromHvacMode(hvacMode):
-	return kHvacModeEnumToStrMap.get(hvacMode, u"unknown")
+	return kHvacModeEnumToStrMap.get(hvacMode, "unknown")
 
 def _lookupActionStrFromFanMode(fanMode):
-	return kFanModeEnumToStrMap.get(fanMode, u"unknown")
+	return kFanModeEnumToStrMap.get(fanMode, "unknown")
 
 ################################################################################
 class Plugin(indigo.PluginBase):
